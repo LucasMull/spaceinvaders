@@ -104,7 +104,7 @@ int main()
 	  fire.randx = 0;
 	  fire.randy = 0;
   movement path; /*armazena a posição X da fileira de naves*/
-  	  for (i=0, j=24; i<5; path.rotate[i]=j, path.direction[i++]=LEFT, j-=4);
+  	  for (i=0, j=20; i<5; path.rotate[i]=j, path.direction[i++]=LEFT, j-=4);
 	  path.activate=FALSE; /*se == TRUE então as fileiras descem uma posição, reseta pra FALSE depois de descer*/
   user tank; /*posição do tanque*/
           tank.posx=36;
@@ -147,22 +147,22 @@ int main()
 void initEnemy(int i, int j, enemy *ship, gameset *update)
 {
 
-  int ki, kj, kl;
+  int kj, kl;
   int TYPE = 0, activate;
 
   switch(i) /* i = linha */
   {
-	case 8:
+	case 4:
 		TYPE = 0;
 		activate = TRUE;
 		break;
+	case 8:
 	case 12:
-	case 16:
 		TYPE = 1;
 		activate = TRUE;
 		break;
+	case 16:
 	case 20:
-	case 24:
 		TYPE = 2;
 		activate = TRUE;
 		break;
@@ -303,7 +303,7 @@ void initField(gameset *update, enemy *ship)
     for (j=0; j<COLUMN; j++)
       update->field[i][j]=' ';
   
-  for (i=8; i<=24; i+=4)/*preencher matriz campo com naves*/
+  for (i=4; i<=20; i+=4)/*preencher matriz campo com naves*/
     for (j=0; j<COLUMN; j++)
       if ( ( (j+2)%9 == 0 ) && i<40)/*pula de 7 em 7 casas por nave*/
           initEnemy(i, j, ship, update);
@@ -460,13 +460,17 @@ void moveTank(int key, gameset *update, user *tank)
 			break;
 		case 'a': /*movimenta tanque contanto que n esteja no extremo*/
 			if (tank->posy - 1 > 1)
+			{
 				tank->posy--;
 				initTank(tank->posx, tank->posy, update);
+			}
 			break;
 		case 'd': /*movimenta tanque contanto que n esteja no extremo*/
 			if (tank->posy + 1 < COLUMN-2)
+			{
 				tank->posy++;
 				initTank(tank->posx, tank->posy, update);
+			}
 			break;
 		case 'q': /*sai do jogo*/
 			endwin();
