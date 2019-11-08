@@ -472,6 +472,7 @@ int main()
 /* GAME properties */
   t_lista l;
   	l.updateField = 0;
+	l.direcao = RIGHT;
   t_win win;
 	win.moship = newwin(5,COL,1,1);
   	win.enemy = newwin(ROW-3,COL,1,1);
@@ -510,7 +511,7 @@ int main()
   init_pair(COR_MOSHIP, COLOR_RED, COLOR_BLACK);
   wattron(win.moship, COLOR_PAIR(COR_MOSHIP));
   wattron(win.moship, A_BOLD);
-  /*borda(0, 0, ROW, COL+1);*/
+  borda(0, 0, ROW, COL+1);
   
   inicializaLista(&l);
   inicializaNaves(&l);
