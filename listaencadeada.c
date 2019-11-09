@@ -1,8 +1,11 @@
 /*	COISAS A FAZER:
- *		CRIAR DETECÇÃO DE COLISÃO
+ *		FAZER EXPLOSÃO DURAR MAIS TEMPO NA TELA
+ *		ARRUMAR RNG DO TIRO INIMIGO PARA GARANTIR TIROS COM FREQUENCIA AINDA QUANDO HÁ POUCAS NAVES
+ *		IMPLEMENTAR DETECÇÃO DE COLISÃO AMPLAMENTE
  *		ARRUMAR BUG DE TIROS NA MESMA LINHA APAGAREM LINHA
  *		TERMINAR DE COMENTAR O CÓDIGO
  *		CRIAR INSTRUÇÃO DE CONTROLES ANTES DO JOGO INICIAR
+ *		ARRUMAR POSICIONAMENTO ERRADO DA NAVE QUANDO TROCA DA ESQUERDA PRA DIREITA EM UMA FILEIRA COM NAVES MORTAS
  *		CRIAR VARIÁVEL CHAVE NO NODO PARA DEFINIR VALOR DE PONTUAÇÃO DA NAVE OU COMO LEITURA DO ID
  */
 
@@ -39,16 +42,20 @@
 #define TIRO1 "(\0"
 #define TIRO2 "#\0"
 
+#define MORTE "\n \\'/ \n-   -\n /,\\ \0"
+
 #define COR_BORDA 0
 #define COR_NAVE 1
 #define COR_TANQUE 2
 #define COR_TIRO_NAVE 3
 #define COR_TIRO_TANQUE 4
 #define COR_MOSHIP 5
+#define COR_EXPLOSAO 6
 
 #define COLOR_BROWN 52
 #define COLOR_ORANGE 154
 #define COLOR_PINK 229
+#define COLOR_YELLOW2 220
 
 struct t_node
 {
@@ -94,10 +101,10 @@ struct t_win /* para facilitar na hora de chamar janela nas funções */
 {
  WINDOW *enemy; /*janela que contém naves inimigas*/
  WINDOW *moship; /*janela que contém nave mãe*/
- WINDOW *fire2; /*janela que contém tiro inimigo*/
-
  WINDOW *tank; /*janela que contém tanque*/
  WINDOW *fire1; /*janela que contém tiro do player*/
+ WINDOW *fire2; /*janela que contém tiro inimigo*/
+ WINDOW *score; /*janela que contém animação de pontuação*/
 }; typedef struct t_win t_win;
 
 
@@ -291,7 +298,6 @@ void printTanque(t_lista *l, WINDOW *win)
 	wrefresh(win);
 }
 
-
 void printNaves(t_lista *l, t_win *win)
 {
 	int i, j; /*contadores*/
@@ -382,10 +388,38 @@ void movimentaMoShip(t_lista *l, WINDOW *win)
 	wclear(win);
 }
 
-void movimentaNaves(t_lista *l, WINDOW *win)
+void limpaNodoMatriz(void *mat[ROW][COL], t_node *atual)
+{
+	 int i, j;
+	
+	 for ( i=-1;i<4;i++ )
+		for ( j=-3;j<=3;j++ )
+			mat[atual->posy+i][atual->posx+j] = NULL;
+}
+
+void atualizaMatriz(void *mat[ROW][COL], t_node *atual)
+{
+	 int row, col, j;
+
+	 row=0; col=-2; j=0;
+         while ( atual->sprite1[j] != '\0' )
+         {
+         	if( atual->sprite1[j] == '\n' ){
+                	row++;
+                        col=-2;
+                }
+                else
+			mat[atual->posy+row][atual->posx+col] = atual;
+                col++;
+                j++;
+	 }
+}
+
+void movimentaNaves(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 {
 	int i;
 	int SWITCH = FALSE; /*para controlar saída do nested loop*/ 
+		  
 
 	if ( l->direcao == RIGHT )
 	{
@@ -397,12 +431,16 @@ void movimentaNaves(t_lista *l, WINDOW *win)
 			l->atual = l->fim[i]->prev;
 			while ( l->atual != l->ini[i] )
 			{
-				if ( l->atual->posx < COL-5 )
+				limpaNodoMatriz(mat, l->atual);
+				if ( l->atual->posx < COL-5 ){
 					l->atual->posx++;
+					atualizaMatriz(mat, l->atual);
+				}
 				else
 				{
 					l->direcao = LEFT;
 					desceNaves(l);
+					atualizaMatriz(mat, l->atual);
 					
 					SWITCH = TRUE; /*força saída do nested loop*/
 					break;
@@ -422,12 +460,16 @@ void movimentaNaves(t_lista *l, WINDOW *win)
 			l->atual = l->ini[i]->prox;
 			while ( l->atual != l->fim[i] )
 			{
-				if ( l->atual->posx > 2 )
+				limpaNodoMatriz(mat, l->atual);
+				if ( l->atual->posx > 2 ){
 					l->atual->posx--;
+					atualizaMatriz(mat, l->atual);
+				}
 				else
 				{
 					l->direcao = RIGHT;
 					desceNaves(l);
+					atualizaMatriz(mat, l->atual);
 					
 					SWITCH = TRUE; /*força saída do nested loop*/
 					break;
@@ -474,6 +516,7 @@ int inicializaTiros(t_lista *l, t_tiro *t, int ID)
 		new_fire->sprite1 = TIRO2;
 		t->qtd_tiros2++;
 	}
+	new_fire->sprite2 = MORTE;
 	return 1;
 }
 
@@ -486,7 +529,31 @@ void removeAtualLista(t_node *atual)
 	atual = NULL;
 }
 
-void movimentaTiros(t_tiro *t, t_win *win)
+void printaExplosao(t_node *atual, t_win *win)
+{
+	int row, col, j;
+
+	row=-3; col=-2; j=0;
+	while ( atual->sprite2[j] != '\0' )
+	{
+			if( atual->sprite2[j] == '\n' ){
+				row++;
+				col=-2;
+			}
+			else
+			{
+				wmove(win->score, atual->posy+row, atual->posx+col);
+				waddch(win->score, atual->sprite2[j]);
+			}
+			col++;
+			j++;
+	}
+}
+
+/*FUNÇÃO RESPONSÁVEL POR MOVIMENTAR O TIRO DO USUÁRIO
+ * E DOS INIMIGOS, A PARTIR DE UMA LISTA LINKADA
+ * E CHECAR AS CONDIÇÕES DE IMPACTO */
+void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 {
 	t->atual = t->ini->prox;
 	if ((t->qtd_tiros1) || (t->qtd_tiros2))
@@ -497,7 +564,18 @@ void movimentaTiros(t_tiro *t, t_win *win)
 			{
 				wmove(win->fire1, t->atual->posy, t->atual->posx);
 				waddch(win->fire1, ' ');
-				if ( t->atual->posy > 0 )
+				if ( mat[t->atual->posy][t->atual->posx] != NULL ) /*detecção de colisão do tiro com nave inimiga*/
+				{
+					removeAtualLista(mat[t->atual->posy][t->atual->posx]);
+					limpaNodoMatriz(mat, mat[t->atual->posy][t->atual->posx]);
+					removeAtualLista(t->atual);
+					
+					printaExplosao(t->atual, win);	
+					
+					t->qtd_tiros1--;
+					l->qtd_naves--;
+				}
+				else if ( t->atual->posy > 0 )
 					t->atual->posy--;
 				else{
 					removeAtualLista(t->atual);
@@ -581,11 +659,11 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key)
 	}
 }
 
-int GameOn(t_lista *l, t_tiro *t, t_win *win)
+int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 {
 	int key;
 	int utime = 10000;
-	int i=0, randy, randx;
+	int randy, randx;
 	
 	if ( l->updateField % 60000 == 0 )
 	{	
@@ -598,24 +676,21 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win)
 	movimentaTanque(l, t, win->tank, key);
 	if ( l->updateField % 40000 == 0 )
 	{
-		if ( rand()%30 == 0 )
+		if ( rand()%20 == 0 )
 		{
-			randy = rand() % 4;
-			randx = rand() % 11;
+			randy = rand() % ROW;
+			randx = rand() % COL;
 
-			l->atual = l->ini[randy]->prox;
-			while (( i<randx ) && ( l->atual != l->fim[randy] )){
-				l->atual = l->atual->prox;
-				i++;
-			}
-			inicializaTiros(l, t, 2);
+			if ( (l->atual = mat[randy][randx]) )
+				inicializaTiros(l, t, 2);
 		}	
-		movimentaTiros(t, win);
+		movimentaTiros(t, l, win, mat);
 	}
 	if ( l->updateField % 70000 == 0 )
 		movimentaMoShip(l, win->moship);
 	if ( l->updateField % 300000 == 0 ){
-		movimentaNaves(l, win->enemy);
+		movimentaNaves(l, win->enemy, mat);
+		wrefresh(win->score);
 		l->updateField = 0;
 	}
 
@@ -645,10 +720,15 @@ int main()
   int gety, getx;
   int key;
 /* GAME properties */
+  int i, j;
+  /* matriz de ponteiros que guarda a posição dos objetos do campo 
+   * em suas coordenadas em forma do endereço do mesmo, para facilitar
+   * detecção de colisão */
+  void *mat[ROW][COL];
+  
   t_lista l;
   t_tiro t;
   t_win win;
-
 /* START ncurse */
   initscr();
   cbreak();
@@ -680,18 +760,26 @@ int main()
   }
   clear();
   
-
-  l.updateField = 0;
-  l.direcao = RIGHT;
+  srand(time(NULL)); /*cria seed para rand()*/
   
+  for ( i=0; i<ROW; i++ )
+      for ( j=0; j<COL; j++ )
+          mat[i][j] = NULL; /*preenche elementos da matriz de ponteiros com NULL*/
+
+  l.updateField = 0; /*temporizador de controle começa no 0*/
+  l.direcao = RIGHT; /*naves começam se movendo para a direita*/
+  
+  /*INICIALIZA JANELAS A SEREM UTILIZADAS*/
   win.moship = newwin(5,COL,1,1);
   win.enemy = newwin(ROW-3,COL,1,1);
   win.tank = newwin(2,COL,ROW-2,1);
   win.fire1 = newwin(ROW,COL,1,1);
   win.fire2 = newwin(ROW,COL,1,1);
-
-  borda(0, 0, ROW, COL+1);
+  win.score = newwin(ROW,COL,1,1);
   
+  borda(0, 0, ROW, COL+1); /*inicializa borda*/
+  
+  /*INICIALIZA PARES DE COR E ATRIBUTOS PARA CADA JANELA*/
   init_pair(COR_NAVE, COLOR_ORANGE, COLOR_BLACK);
   wattron(win.enemy, COLOR_PAIR(COR_NAVE));
   wattron(win.enemy, A_BOLD);
@@ -712,13 +800,18 @@ int main()
   wattron(win.fire2, COLOR_PAIR(COR_TIRO_NAVE));
   wattron(win.fire2, A_BOLD);
 
+  init_pair(COR_EXPLOSAO, COLOR_YELLOW2, COLOR_BLACK);
+  wattron(win.score, COLOR_PAIR(COR_EXPLOSAO));
+  wattron(win.score, A_BOLD);
+
+  /*INICIALIZA LinkedLists A SEREM UTILIZADAS*/
   inicializaListaNaves(&l);
   inicializaListaTiros(&t);
 
-  inicializaNaves(&l);
+  inicializaNaves(&l); /*cria e insere os nodos das naves na lista*/
   
-  srand(time(NULL));
-  while ( GameOn(&l, &t, &win) );
+  /*função principal que controla o tempo e chama todas as outras funções pro funcionamento do jogo*/
+  while ( GameOn(&l, &t, &win, mat) );
   sleep(2);
   
   endwin();
