@@ -419,15 +419,14 @@ void movimentaNaves(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 {
 	int i;
 	int SWITCH = FALSE; /*para controlar saída do nested loop*/ 
-		  
 
-	if ( l->direcao == RIGHT )
+	for ( i=0; i<5; i++ )
 	{
-		for ( i=0; i<5; i++ )
+		if ( SWITCH == TRUE )
+			break;
+
+		if ( l->direcao == RIGHT )
 		{
-			if ( SWITCH == TRUE )
-				break;
-			
 			l->atual = l->fim[i]->prev;
 			while ( l->atual != l->ini[i] )
 			{
@@ -441,7 +440,7 @@ void movimentaNaves(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 					l->direcao = LEFT;
 					desceNaves(l);
 					atualizaMatriz(mat, l->atual);
-					
+						
 					SWITCH = TRUE; /*força saída do nested loop*/
 					break;
 				}
@@ -449,14 +448,8 @@ void movimentaNaves(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 				l->atual = l->atual->prev;
 			}
 		}
-	}
-	else/*if ( l->direcao == LEFT ) */
-	{
-		for ( i=4; i>=0; i-- )
+		else/*if ( l->direcao == LEFT ) */
 		{
-			if ( SWITCH == TRUE )
-				break;
-			
 			l->atual = l->ini[i]->prox;
 			while ( l->atual != l->fim[i] )
 			{
@@ -470,15 +463,15 @@ void movimentaNaves(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 					l->direcao = RIGHT;
 					desceNaves(l);
 					atualizaMatriz(mat, l->atual);
-					
+						
 					SWITCH = TRUE; /*força saída do nested loop*/
 					break;
 				}
 
 				l->atual = l->atual->prox;
 			}
-		}
 
+		}
 	}
 	
 	wclear(win);
@@ -552,9 +545,11 @@ void printaExplosao(t_node *atual, t_win *win)
 
 /*FUNÇÃO RESPONSÁVEL POR MOVIMENTAR O TIRO DO USUÁRIO
  * E DOS INIMIGOS, A PARTIR DE UMA LISTA LINKADA
- * E CHECAR AS CONDIÇÕES DE IMPACTO */
+ * E CHECAR AS CONDIÇÕES DE COLISÃO ENTRE TIRO E OUTROS ELEMENTOS */
 void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 {
+	t_node *nodoDetectado;
+
 	t->atual = t->ini->prox;
 	if ((t->qtd_tiros1) || (t->qtd_tiros2))
 	{
@@ -564,10 +559,12 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 			{
 				wmove(win->fire1, t->atual->posy, t->atual->posx);
 				waddch(win->fire1, ' ');
-				if ( mat[t->atual->posy][t->atual->posx] != NULL ) /*detecção de colisão do tiro com nave inimiga*/
+
+				nodoDetectado = mat[t->atual->posy][t->atual->posx];
+				if ( nodoDetectado != NULL ) /*detecção de colisão do tiro com nave inimiga*/
 				{
-					removeAtualLista(mat[t->atual->posy][t->atual->posx]);
-					limpaNodoMatriz(mat, mat[t->atual->posy][t->atual->posx]);
+					removeAtualLista(nodoDetectado);
+					limpaNodoMatriz(mat, nodoDetectado);
 					removeAtualLista(t->atual);
 					
 					printaExplosao(t->atual, win);	
@@ -688,7 +685,8 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 	}
 	if ( l->updateField % 70000 == 0 )
 		movimentaMoShip(l, win->moship);
-	if ( l->updateField % 300000 == 0 ){
+	if ( l->updateField % 300000 == 0 )
+	{
 		movimentaNaves(l, win->enemy, mat);
 		wrefresh(win->score);
 		l->updateField = 0;
