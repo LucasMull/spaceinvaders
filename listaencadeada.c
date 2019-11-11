@@ -1,12 +1,10 @@
 /*	COISAS A FAZER:
+ *		FAZER NAVES SEREM COMIDAS COM O TOQUE DAS NAVES
  *		FAZER EXPLOSÃO DURAR MAIS TEMPO NA TELA
- *		IMPLEMENTAR DETECÇÃO DE COLISÃO AMPLAMENTE
  *		ARRUMAR BUG DE TIROS NA MESMA LINHA APAGAREM LINHA
  *		TERMINAR DE COMENTAR O CÓDIGO
  *		CRIAR INSTRUÇÃO DE CONTROLES ANTES DO JOGO INICIAR
- *		CRIAR VARIÁVEL CHAVE NO NODO PARA DEFINIR VALOR DE PONTUAÇÃO DA NAVE OU COMO LEITURA DO ID
  */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +12,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+
 
 #define ROW 38
 #define COL 100
@@ -23,6 +22,7 @@
 
 #define TRUE 1
 #define FALSE 0
+
 
 #define SHIP11 "\n TvT \n /U\\ \n  w w\0"
 #define SHIP12 "\n TvT \n (U) \nw w  \0"
@@ -42,6 +42,9 @@
 
 #define MORTE "\n \\'/ \n-   -\n /,\\ \0"
 
+#define BARREIRA "\n wvVwv \nVWW#VWV\n   #   \0"
+
+
 #define COR_BORDA 0
 #define COR_NAVE 1
 #define COR_TANQUE 2
@@ -49,6 +52,7 @@
 #define COR_TIRO_TANQUE 4
 #define COR_MOSHIP 5
 #define COR_EXPLOSAO 6
+#define COR_BARREIRA 7
 
 #define COLOR_BROWN 52
 #define COLOR_ORANGE 154
@@ -104,10 +108,9 @@ struct t_win /* para facilitar na hora de chamar janela nas funções */
  WINDOW *tank; /*janela que contém tanque*/
  WINDOW *fire1; /*janela que contém tiro do player*/
  WINDOW *fire2; /*janela que contém tiro inimigo*/
+ WINDOW *wall; /*janela que contém barreira*/
  WINDOW *score; /*janela que contém animação de pontuação*/
 }; typedef struct t_win t_win;
-
-
 
 /* CRIA SENTINELAS NA LISTA PARA FACILITAR O ACESSO E MANIPULAÇÃO
  * COLOCA O TANQUE NO INICIO DA LISTA E NAVE MAE NO FIM */
@@ -266,6 +269,67 @@ int inicializaNaves (t_lista *l)
  }
 
  return 1;
+}
+
+void inicializaBarreiras(void *mat[ROW][COL])
+{
+	int row, col;
+	int i,j;
+	t_node *nodo_solto;
+	
+	for( i=0; i<84; i+=21)
+	{
+		j=0;
+		col=14;
+		row = ROW-8;
+		while ( BARREIRA[j] != '\0' )
+		{
+			if( BARREIRA[j] == '\n' ){
+				row++;
+				col=14;
+			}
+			else if ( BARREIRA[j] != ' ' )
+			{
+				nodo_solto = (t_node*)malloc(sizeof(t_node));
+
+				nodo_solto->chave = -2;
+				mat[row][col+i] = nodo_solto;
+			}
+			col++;
+			j++;
+		}
+	}
+}
+
+void printBarreiras(WINDOW *win, void *mat[ROW][COL])
+{
+	int row, col;
+	int i,j;
+	
+	for( i=0; i<84; i+=21)
+	{
+		j=0;
+		col=14;
+		row = ROW-8;
+		while ( BARREIRA[j] != '\0' )
+		{
+			if( BARREIRA[j] == '\n' ){
+				row++;
+				col=14;
+			}
+			else if ( mat[row][col+i] ){
+				wmove(win, row, col+i);
+				waddch(win, BARREIRA[j]);
+			}
+			else{
+				wmove(win, row, col+i);
+				waddch(win, ' ');
+			}
+
+			col++;
+			j++;
+		}
+	}
 }
 
 /* PRINTA O TANQUE DO USUÁRIO 
@@ -594,12 +658,20 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 
 				if ( nodoDetectado ) /*detecção de colisão do tiro com nave inimiga*/
 				{
-					l->score += nodoDetectado->chave;
-					if (nodoDetectado->chave != 100)	
-						l->qtd_naves--;
-					
-					removeAtualLista(nodoDetectado);
-					limpaNodoMatriz(mat, nodoDetectado);
+					if (nodoDetectado->chave == -2){ /*se o nodoDetectado for uma barreira*/
+						mat[t->atual->posy][t->atual->posx] = NULL;
+						free(nodoDetectado);
+						nodoDetectado = NULL;
+					}
+					else /*se for uma nave*/
+					{
+						l->score += nodoDetectado->chave;
+						if (nodoDetectado->chave != 100) /*se nao for a nave-mae diminui qtd de naves*/	
+							l->qtd_naves--;
+						
+						removeAtualLista(nodoDetectado);
+						limpaNodoMatriz(mat, nodoDetectado);
+					}
 					removeAtualLista(t->atual);
 
 					printaExplosao(t->atual, win);	
@@ -612,19 +684,34 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 					t->qtd_tiros1--;
 				}
 			}
-			else/*if ( t->atual->chave == 2 )*/
+			else/*if ( t->atual->chave == 2 )*/	/*MOVIMENTA TIRO DAS NAVES*/
 			{
 				wmove(win->fire2, t->atual->posy, t->atual->posx);
 				waddch(win->fire2, ' ');
 				
-				if ( nodoDetectado && t->atual->posy >= ROW-2 )
+				if ( nodoDetectado )
 				{
-					printaExplosao(t->atual, win);
-					wrefresh(win->score);
-					sleep(2);
-					endwin();
-					exit(1);	
+					if (nodoDetectado->chave == -2) /*se o nodoDetectado for uma barreira*/
+					{
+						mat[t->atual->posy][t->atual->posx] = NULL;
+						free(nodoDetectado);
+						nodoDetectado = NULL;
+						
+						removeAtualLista(t->atual);
+
+						printaExplosao(t->atual, win);	
+						t->qtd_tiros2--;
+					}
+					else if (nodoDetectado->chave == -1) /*se o nodoDetectado for o tanque*/
+					{
+						printaExplosao(t->atual, win);
+						wrefresh(win->score);
+						sleep(2);
+						endwin();
+						exit(1);	
+					}
 				}
+				
 				if ( t->atual->posy < ROW-2 )
 					t->atual->posy++;
 				else{
@@ -722,8 +809,9 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 	{	
 		printNaves(l, win);
 		printTanque(l, win->tank);
+		printBarreiras(win->wall, mat);
 		printTiros(t, win);
-		
+
 		i=0; j=l->score+1;
 		while (j>0){
 			j/=10;
@@ -733,6 +821,7 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 		mvwprintw(win->score, 0, (COL/2)+(6-i), "%d",l->score);	
 		
 		wrefresh(win->enemy);
+		wrefresh(win->wall);
 		wrefresh(win->moship);
 		wrefresh(win->fire1);
 		wrefresh(win->fire2);
@@ -756,7 +845,8 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 					break;
 				
 				l->atual = l->ini[i]->prox;
-				while (l->atual != l->fim[i]){
+				while (l->atual != l->fim[i])
+				{
 					if ( j == rand_range ){
 						SWITCH = TRUE;
 						break;
@@ -863,6 +953,7 @@ int main()
   win.fire1 = newwin(ROW,COL,1,1);
   win.fire2 = newwin(ROW,COL,1,1);
   win.score = newwin(ROW,COL,1,1);
+  win.wall = newwin(ROW,COL,1,1);
   
   borda(0, 0, ROW, COL+1); /*inicializa borda*/
   
@@ -891,12 +982,16 @@ int main()
   wattron(win.score, COLOR_PAIR(COR_EXPLOSAO));
   wattron(win.score, A_BOLD);
 
+  init_pair(COR_BARREIRA, COLOR_GREEN, COLOR_BLACK);
+  wattron(win.wall, COLOR_PAIR(COR_BARREIRA));
+  wattron(win.wall, A_BOLD);
+  
   /*INICIALIZA LinkedLists A SEREM UTILIZADAS*/
   inicializaListaNaves(&l);
   inicializaListaTiros(&t);
 
   inicializaNaves(&l); /*cria e insere os nodos das naves na lista*/
-  
+  inicializaBarreiras(mat); 
   /*função principal que controla o tempo e chama todas as outras funções pro funcionamento do jogo*/
   while ( GameOn(&l, &t, &win, mat) );
   sleep(2);
