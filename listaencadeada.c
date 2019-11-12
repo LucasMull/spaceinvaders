@@ -1,4 +1,5 @@
 /*	COISAS A FAZER:
+ *		ARRUMAR HITBOX DAS NAVES E DO TANQUE LEMBRANDO QUE A TELA DOS MESMOS COMEÇA EM X=1 Y=1
  *		FAZER NAVES SEREM COMIDAS COM O TOQUE DAS NAVES
  *		FAZER EXPLOSÃO DURAR MAIS TEMPO NA TELA
  *		ARRUMAR BUG DE TIROS NA MESMA LINHA APAGAREM LINHA
@@ -24,25 +25,27 @@
 #define FALSE 0
 
 
-#define SHIP11 "\n TvT \n /U\\ \n  w w\0"
-#define SHIP12 "\n TvT \n (U) \nw w  \0"
-#define SHIP21 "\n0'-'0\nd(.)b\n_/ )_\0"
-#define SHIP22 "\n0'o'0\n(b.d)\n_( \\_\0"
+#define SHIP11 "\n >v< \n /Y\\ \n  Ww \0"
+#define SHIP12 "\n ovo \n (Yw \n W   \0"
+#define SHIP21 "\n!'v'!\n/'\"'\\\n w W \0"
+#define SHIP22 "\n!'0'!\n(>\"<)\n W w \0"
 #define SHIP31 "\n{ovo}\n(^^^)\n W W \0"
 #define SHIP32 "\n{OvO}\n/^^^\\\n W W \0"
 
-#define TANK1 "\n , ,m\nm-^-.\0"
-#define TANK2 "\nm, m,\n.-^-.\0"
+#define TANK1 "\nm'_,m\n<-\"->\0"
+#define TANK2 "\nm._' \n<-\"-m\0"
 
 #define MOSHIP1 "\n|\"|'-'L_ \n|SAFARI_|\nJ(x)\"\"(x)\0"
 #define MOSHIP2 "\n|\"|'O'L_ \n|SAFARI_|\nJ(+)\"\"(+)\0"
 
 #define TIRO1 "(\0"
 #define TIRO2 "#\0"
+#define EXPLOSAO_BANANA "\"%@\"\0"
+#define EXPLOSAO_COCO "\"@\","	
 
 #define MORTE "\n \\'/ \n-   -\n /,\\ \0"
 
-#define BARREIRA "\n wvVwv \nVWW#VWV\n   #   \0"
+#define BARREIRA "\n wvVwv \nVWW#V)V\n ( #   \0"
 
 
 #define COR_BORDA 0
@@ -51,7 +54,7 @@
 #define COR_TIRO_NAVE 3
 #define COR_TIRO_TANQUE 4
 #define COR_MOSHIP 5
-#define COR_EXPLOSAO 6
+#define COR_SCORE 6
 #define COR_BARREIRA 7
 
 #define COLOR_BROWN 52
@@ -79,6 +82,7 @@ struct t_tiro
 
  t_node *ini;
  t_node *fim;
+ t_node *barreira; /*aponta pro primeiro nodo da barreira*/
 
  int qtd_tiros1;
  int qtd_tiros2;
@@ -108,7 +112,6 @@ struct t_win /* para facilitar na hora de chamar janela nas funções */
  WINDOW *tank; /*janela que contém tanque*/
  WINDOW *fire1; /*janela que contém tiro do player*/
  WINDOW *fire2; /*janela que contém tiro inimigo*/
- WINDOW *wall; /*janela que contém barreira*/
  WINDOW *score; /*janela que contém animação de pontuação*/
 }; typedef struct t_win t_win;
 
@@ -271,11 +274,21 @@ int inicializaNaves (t_lista *l)
  return 1;
 }
 
-void inicializaBarreiras(void *mat[ROW][COL])
+int inicializaBarreiras(t_tiro *t, void *mat[ROW][COL])
 {
 	int row, col;
 	int i,j;
-	t_node *nodo_solto;
+	t_node *nodo_solto, *first;
+	
+	first = (t_node*)malloc(sizeof(t_node));
+	if (first == NULL){
+		free(first);
+		return 0;
+	}
+
+	t->barreira = first;
+	first->prox = NULL;
+	first->prev = NULL;
 	
 	for( i=0; i<84; i+=21)
 	{
@@ -291,7 +304,17 @@ void inicializaBarreiras(void *mat[ROW][COL])
 			else if ( BARREIRA[j] != ' ' )
 			{
 				nodo_solto = (t_node*)malloc(sizeof(t_node));
-
+				if (nodo_solto == NULL){
+					free(nodo_solto);
+					return 0;
+				}
+				
+				nodo_solto->prev = t->barreira;
+				nodo_solto->prox = t->barreira->prox;
+				if ( t->barreira->prox != NULL)
+					t->barreira->prox->prev = nodo_solto;
+				t->barreira->prox = nodo_solto;
+				
 				nodo_solto->chave = -2;
 				mat[row][col+i] = nodo_solto;
 			}
@@ -299,31 +322,36 @@ void inicializaBarreiras(void *mat[ROW][COL])
 			j++;
 		}
 	}
+	return 1;
 }
 
 void printBarreiras(WINDOW *win, void *mat[ROW][COL])
 {
 	int row, col;
 	int i,j;
-	
+	t_node *nodoDetectado;
+
 	for( i=0; i<84; i+=21)
 	{
 		j=0;
 		col=14;
 		row = ROW-8;
+		
 		while ( BARREIRA[j] != '\0' )
 		{
 			if( BARREIRA[j] == '\n' ){
 				row++;
 				col=14;
 			}
-			else if ( mat[row][col+i] ){
+			else if (( nodoDetectado = mat[row][col+i] ) && ( nodoDetectado->chave == -2 ))
+			{
 				wmove(win, row, col+i);
-				waddch(win, BARREIRA[j]);
-			}
-			else{
-				wmove(win, row, col+i);
-				waddch(win, ' ');
+				if (BARREIRA[j] == '(' || BARREIRA[j] == ')')
+					waddch(win, BARREIRA[j] | COLOR_PAIR(COR_TIRO_TANQUE));
+				else if (BARREIRA[j] != '#')
+					waddch(win, BARREIRA[j] | COLOR_PAIR(COR_BARREIRA));
+				else
+					waddch(win, BARREIRA[j] | COLOR_PAIR(COR_SCORE));
 			}
 
 			col++;
@@ -347,18 +375,23 @@ void printTanque(t_lista *l, WINDOW *win)
 	{
 		if ( l->tanque->sprite1[j] == '\n' ){ /*pula uma casa junto com o newline*/
 			row++;
-			col=-2;
+			col=-3;
 		}
 		else
 		{
 			if ( l->tanque->posx % 2 == 0 ){
 				wmove(win, l->tanque->posy+row, l->tanque->posx+col); /*atualiza posição para printar o char*/
-				waddch(win, l->tanque->sprite1[j]); /*printa o char na posição*/
+				if (l->tanque->sprite1[j] != 'm')
+					waddch(win, l->tanque->sprite1[j]|COLOR_PAIR(COR_TIRO_TANQUE)); /*printa o char na posição*/
+				else
+					waddch(win, l->tanque->sprite1[j]); /*printa o char na posição*/
 			}
 			else{
 				wmove(win, l->tanque->posy+row, l->tanque->posx+col); /*atualiza posição para printar o char*/
-				waddch(win, l->tanque->sprite2[j]); /*printa o char na posição*/
-
+				if (l->tanque->sprite2[j] != 'm')
+					waddch(win, l->tanque->sprite2[j]|COLOR_PAIR(COR_TIRO_TANQUE)); /*printa o char na posição*/
+				else
+					waddch(win, l->tanque->sprite2[j]); /*printa o char na posição*/
 			}
 		}
 		col++;
@@ -374,7 +407,7 @@ void printNaves(t_lista *l, t_win *win)
 	/* TEMPORARIO APENAS PARA VISUALIZACAO DA MOSHIP 
 	 * CRIAR FÇ DEPOIS */
 	j=0;
-	row=0; 
+	row=-1; 
 	while ( l->moship->sprite1[j] != '\0' )
 	{
 		if ( l->moship->sprite1[j] == '\n' ){
@@ -402,7 +435,7 @@ void printNaves(t_lista *l, t_win *win)
 		while ( l->atual != l->fim[i] )
 		{
 		  j=0;
-		  row=0;
+		  row=-1;
 		  while ( l->atual->sprite1[j] != '\0' )
 		  {
 			if( l->atual->sprite1[j] == '\n' ){
@@ -452,51 +485,54 @@ void limpaNodoMatriz(void *mat[ROW][COL], t_node *atual)
 	int fim_i;
 	int ini_j, fim_j;
 
- 	switch ( atual->chave )
+	switch ( atual->chave )
 	{
 		case -1:
-			fim_i = 3;
-			ini_j = -3;
-			fim_j = 3;
+			fim_i = 1;
+			ini_j = -2;
+			fim_j = 2;
 			break;
 		case 100:
-			fim_i = 4;
-			ini_j = -5;
+			fim_i = 2;
+			ini_j = -4;
 			fim_j= 5;
 			break;
 		default:
-			fim_i = 4;
-			ini_j = -3;
-			fim_j = 3;
+			fim_i = 2;
+			ini_j = -2;
+			fim_j = 4;
 			break;
 	}		
 	 
-	for ( i=-1;i<fim_i;i++ )
-		for ( j=ini_j;j<=fim_j;j++ )
-				mat[atual->posy+i][atual->posx+j] = NULL;
+	for ( i=-1;i<=fim_i;i++ )
+		for ( j=ini_j;j<=fim_j;j++ ){
+		/*	mvaddch(atual->posy+i,atual->posx+j, '@');*/
+			mat[atual->posy+i][atual->posx+j] = NULL;
+		}
 }
 
 void atualizaMatriz(void *mat[ROW][COL], t_node *atual)
 {
 	 int row, col;
-	 int j, ini_j;
-	 
-	 j=0;
-	 row=0;
-	  
+	 int j, ini_col;
+
+	 j=0;row=-1;
 	 if ( atual->chave == 100 )
-		 ini_j = -4;
+		 ini_col = -5;
 	 else
-		 ini_j = -2;
+		 ini_col = -3;
 
          while ( atual->sprite1[j] != '\0' )
          {
          	if( atual->sprite1[j] == '\n' ){
                 	row++;
-                        col=ini_j;
+                        col=ini_col;
                 }
-		mat[atual->posy+row][atual->posx+col] = atual;
-                
+		else if ( atual->sprite1[j] != ' ' ){
+			mat[atual->posy+row][atual->posx+col] = atual;
+		/*	mvaddch(atual->posy+row,atual->posx+col, '@');*/
+		}
+		
 		col++;
                 j++;
 	 }
@@ -589,7 +625,7 @@ int inicializaTiros(t_lista *l, t_tiro *t, int ID)
 	if ( ID == 1 )
 	{
 		/*atualiza a posição individual de cada tiro*/
-		new_fire->posx = l->tanque->posx+1;
+		new_fire->posx = l->tanque->posx;
 		new_fire->posy = ROW-4;
 		
 		new_fire->sprite1 = TIRO1;
@@ -609,32 +645,12 @@ int inicializaTiros(t_lista *l, t_tiro *t, int ID)
 
 void removeAtualLista(t_node *atual)
 {
-	if (atual->prox != NULL){
+	if (atual->prox != NULL)
+	{
 		atual->prev->prox = atual->prox;
 		atual->prox->prev = atual->prev;
 		free(atual);
 		atual = NULL;
-	}
-}
-
-void printaExplosao(t_node *atual, t_win *win)
-{
-	int row, col, j;
-	
-	j=0;
-	row=-3; 
-	while ( atual->sprite2[j] != '\0' )
-	{
-			if( atual->sprite2[j] == '\n' ){
-				row++;
-				col=-2;
-			}
-			else{
-				wmove(win->score, atual->posy+row, atual->posx+col);
-				waddch(win->score, atual->sprite2[j]);
-			}
-			col++;
-			j++;
 	}
 }
 
@@ -674,7 +690,8 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 					}
 					removeAtualLista(t->atual);
 
-					printaExplosao(t->atual, win);	
+					wmove(win->fire1, t->atual->posy, t->atual->posx-2);
+					waddstr(win->fire1, EXPLOSAO_BANANA);	
 					t->qtd_tiros1--;
 				}
 				else if ( t->atual->posy > 0 )
@@ -698,14 +715,16 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 						nodoDetectado = NULL;
 						
 						removeAtualLista(t->atual);
-
-						printaExplosao(t->atual, win);	
+						
+						wmove(win->fire2, t->atual->posy, t->atual->posx);
+						waddstr(win->fire2, EXPLOSAO_COCO);	
 						t->qtd_tiros2--;
 					}
 					else if (nodoDetectado->chave == -1) /*se o nodoDetectado for o tanque*/
 					{
-						printaExplosao(t->atual, win);
-						wrefresh(win->score);
+						wmove(win->fire2, t->atual->posy, t->atual->posx-2);
+						waddstr(win->fire2, "*\"@\",");	
+						wrefresh(win->fire2);
 						sleep(2);
 						endwin();
 						exit(1);	
@@ -756,7 +775,7 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 			if (t->qtd_tiros1 < 3)
 				inicializaTiros(l, t, 1);
 			break;
-		case 'a': /* BOTÃO DE ANDAR PARA ESQUERDA */
+		case KEY_LEFT: /* BOTÃO DE ANDAR PARA ESQUERDA */
 			if ( l->tanque->posx - 1 > 2 )
 			{
 				for (i=-1; i<=1; i++)
@@ -767,8 +786,8 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 				l->tanque->posx--;
 			}
 			break;
-		case 'd': /* BOTÃO DE ANDAR PARA DIREITA */
-			if ( l->tanque->posx + 1 < COL-5 )
+		case KEY_RIGHT: /* BOTÃO DE ANDAR PARA DIREITA */
+			if ( l->tanque->posx + 1 < COL-3 )
 			{
 				for (i=-1; i<=1; i++)
 					for (j=-2; j<=3; j++){
@@ -807,9 +826,9 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 	
 	if ( l->updateField % 60000 == 0 )
 	{	
+		printBarreiras(win->enemy, mat);
 		printNaves(l, win);
 		printTanque(l, win->tank);
-		printBarreiras(win->wall, mat);
 		printTiros(t, win);
 
 		i=0; j=l->score+1;
@@ -821,7 +840,6 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 		mvwprintw(win->score, 0, (COL/2)+(6-i), "%d",l->score);	
 		
 		wrefresh(win->enemy);
-		wrefresh(win->wall);
 		wrefresh(win->moship);
 		wrefresh(win->fire1);
 		wrefresh(win->fire2);
@@ -953,7 +971,6 @@ int main()
   win.fire1 = newwin(ROW,COL,1,1);
   win.fire2 = newwin(ROW,COL,1,1);
   win.score = newwin(ROW,COL,1,1);
-  win.wall = newwin(ROW,COL,1,1);
   
   borda(0, 0, ROW, COL+1); /*inicializa borda*/
   
@@ -974,24 +991,22 @@ int main()
   wattron(win.fire1, COLOR_PAIR(COR_TIRO_TANQUE));
   wattron(win.fire1, A_BOLD);
   
-  init_pair(COR_TIRO_NAVE, COLOR_BROWN, COLOR_BLACK);
+  init_pair(COR_TIRO_NAVE, COLOR_WHITE, COLOR_BLACK);
   wattron(win.fire2, COLOR_PAIR(COR_TIRO_NAVE));
   wattron(win.fire2, A_BOLD);
 
-  init_pair(COR_EXPLOSAO, COLOR_YELLOW2, COLOR_BLACK);
-  wattron(win.score, COLOR_PAIR(COR_EXPLOSAO));
+  init_pair(COR_SCORE, COLOR_YELLOW2, COLOR_BLACK);
+  wattron(win.score, COLOR_PAIR(COR_SCORE));
   wattron(win.score, A_BOLD);
-
-  init_pair(COR_BARREIRA, COLOR_GREEN, COLOR_BLACK);
-  wattron(win.wall, COLOR_PAIR(COR_BARREIRA));
-  wattron(win.wall, A_BOLD);
   
+  init_pair(COR_BARREIRA, COLOR_GREEN, COLOR_BLACK);
+
   /*INICIALIZA LinkedLists A SEREM UTILIZADAS*/
   inicializaListaNaves(&l);
   inicializaListaTiros(&t);
 
   inicializaNaves(&l); /*cria e insere os nodos das naves na lista*/
-  inicializaBarreiras(mat); 
+  inicializaBarreiras(&t, mat); 
   /*função principal que controla o tempo e chama todas as outras funções pro funcionamento do jogo*/
   while ( GameOn(&l, &t, &win, mat) );
   sleep(2);
