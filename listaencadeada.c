@@ -1,7 +1,5 @@
 /*	COISAS A FAZER:
- *		ARRUMAR HITBOX DAS NAVES E DO TANQUE LEMBRANDO QUE A TELA DOS MESMOS COMEÇA EM X=1 Y=1
- *		FAZER NAVES SEREM COMIDAS COM O TOQUE DAS NAVES
- *		FAZER EXPLOSÃO DURAR MAIS TEMPO NA TELA
+ *		ARRUMAR VELOCIDADE DAS NAVES
  *		ARRUMAR BUG DE TIROS NA MESMA LINHA APAGAREM LINHA
  *		TERMINAR DE COMENTAR O CÓDIGO
  *		CRIAR INSTRUÇÃO DE CONTROLES ANTES DO JOGO INICIAR
@@ -39,7 +37,7 @@
 #define MOSHIP2 "\n|\"|'O'L_ \n|SAFARI_|\nJ(+)\"\"(+)\0"
 
 #define TIRO1 "(\0"
-#define TIRO2 "#\0"
+#define TIRO2 "&\0"
 #define EXPLOSAO_BANANA "\"%@\"\0"
 #define EXPLOSAO_COCO "\"@\","	
 
@@ -58,6 +56,7 @@
 #define COR_BARREIRA 7
 #define COR_BANANA 8
 #define COR_MADEIRA 9
+#define COR_MACACO 10
 
 #define COLOR_BROWN 52
 #define COLOR_ORANGE 154
@@ -215,9 +214,9 @@ int inicializaNaves (t_lista *l)
  
  l->moship->sprite1 = MOSHIP1;
  l->moship->sprite2 = MOSHIP2;
- l->moship->posx = COL/2;
+ l->moship->posx = 5;
  l->moship->posy = 1;
- l->moship->chave = 100;
+ l->moship->chave = FALSE;
 
  l->tanque->sprite1 = TANK1;
  l->tanque->sprite2 = TANK2;
@@ -386,14 +385,16 @@ void printTanque(t_lista *l, WINDOW *win)
 			if ( l->tanque->posx % 2 == 0 ){
 				wmove(win, l->tanque->posy+row, l->tanque->posx+col); /*atualiza posição para printar o char*/
 				if (l->tanque->sprite1[j] != 'm')
-					waddch(win, l->tanque->sprite1[j]|COLOR_PAIR(COR_TIRO_TANQUE)); /*printa o char na posição*/
+					waddch(win, l->tanque->sprite1[j]|COLOR_PAIR(COR_MACACO)); /*printa o char na posição*/
 				else
 					waddch(win, l->tanque->sprite1[j]); /*printa o char na posição*/
 			}
 			else{
+				wmove(win, l->tanque->posy+1, l->tanque->posx+3);
+				waddch(win, '(' | COLOR_PAIR(COR_TIRO_TANQUE) );
 				wmove(win, l->tanque->posy+row, l->tanque->posx+col); /*atualiza posição para printar o char*/
 				if (l->tanque->sprite2[j] != 'm')
-					waddch(win, l->tanque->sprite2[j]|COLOR_PAIR(COR_TIRO_TANQUE)); /*printa o char na posição*/
+					waddch(win, l->tanque->sprite2[j]|COLOR_PAIR(COR_MACACO)); /*printa o char na posição*/
 				else
 					waddch(win, l->tanque->sprite2[j]); /*printa o char na posição*/
 			}
@@ -412,7 +413,7 @@ void printNaves(t_lista *l, t_win *win)
 	 * CRIAR FÇ DEPOIS */
 	j=0;
 	row=-1; 
-	while ( l->moship->sprite1[j] != '\0' )
+	while ((l->moship->chave == TRUE) && (l->moship->sprite1[j] != '\0'))
 	{
 		if ( l->moship->sprite1[j] == '\n' ){
 			row++;
@@ -496,7 +497,7 @@ void limpaNodoMatriz(void *mat[ROW][COL], t_node *atual)
 			ini_j = -2;
 			fim_j = 2;
 			break;
-		case 100:
+		case TRUE: /*caso da NAVE MAE*/
 			fim_i = 2;
 			ini_j = -4;
 			fim_j= 5;
@@ -521,7 +522,7 @@ void atualizaMatriz(void *mat[ROW][COL], t_node *atual)
 	 int j, ini_col;
 
 	 j=0;row=-1;
-	 if ( atual->chave == 100 )
+	 if ( atual->chave == TRUE )
 		 ini_col = -5;
 	 else
 		 ini_col = -3;
@@ -547,8 +548,10 @@ void movimentaMoShip(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 	limpaNodoMatriz(mat, l->moship);
 	if ( l->moship->posx+6 < COL )
 		l->moship->posx++;
-	else
+	else{
 		l->moship->posx = 5;
+		l->moship->chave = FALSE;
+	}
 	atualizaMatriz(mat, l->moship);
 }
 
@@ -683,12 +686,19 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 						free(nodoDetectado);
 						nodoDetectado = NULL;
 					}
+					else if (nodoDetectado->chave == TRUE){
+						l->score += 100;
+						limpaNodoMatriz(mat, nodoDetectado);
+						l->moship->chave = FALSE;
+						l->moship->posx = 5;
+					}
 					else /*se for uma nave*/
 					{
 						l->score += nodoDetectado->chave;
-						if (nodoDetectado->chave != 100) /*se nao for a nave-mae diminui qtd de naves*/	
-							l->qtd_naves--;
-						
+						l->qtd_naves--;
+						if( l->speed > 10000 )
+							l->speed-=10000;	
+
 						removeAtualLista(nodoDetectado);
 						limpaNodoMatriz(mat, nodoDetectado);
 					}
@@ -881,18 +891,22 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 			}
 			inicializaTiros(l, t, 2);
 		}	
+		if (( l->moship->chave == FALSE ) && ( rand()%500 == 0 ))
+			l->moship->chave = TRUE;
+		
 		movimentaTiros(t, l, win, mat);
 	}
-	if ( l->updateField % 70000 == 0 ){
+
+	if (( l->updateField % 70000 == 0 ) && ( l->moship->chave == TRUE )){
 		wclear(win->moship);
 		movimentaMoShip(l, win->moship, mat);
 	}
-	if ( l->updateField % l->speed == 0 ){
+	if ( l->updateField % (l->speed+50000) == 0 ){
 		wclear(win->enemy);
 		movimentaNaves(l, win->enemy, mat);
 		l->updateField = 0;
 	}
-
+	
 	usleep(utime);
 	l->updateField += utime;
 	if ( l->qtd_naves == 0 )
@@ -967,7 +981,7 @@ int main()
   l.updateField = 0; /*temporizador de controle começa no 0*/
   l.direcao = RIGHT; /*naves começam se movendo para a direita*/
   l.score = 0; /*inicializa score no zero*/
-  l.speed = 300000;
+  l.speed = 500000;
 
   /*INICIALIZA JANELAS A SEREM UTILIZADAS*/
   win.moship = newwin(5,COL,1,1);
@@ -999,6 +1013,7 @@ int main()
   wattron(win.score, COLOR_PAIR(COR_SCORE) | A_BOLD);
   
   init_pair(COR_BANANA, COLOR_YELLOW2, COLOR_GREEN);
+  init_pair(COR_MACACO, 130, COLOR_BLACK);
   init_pair(COR_MADEIRA, 130, COLOR_BROWN);
   init_pair(COR_BARREIRA, COLOR_GREEN, COLOR_GREEN);
 
