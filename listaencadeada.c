@@ -1,4 +1,6 @@
 /*	COISAS A FAZER:
+ *		CRIAR FUNÇÃO PARA DESTRUIR LISTA
+ *		CRIAR FUNÇÃO PARA REINICIAR O JOGO
  *		ARRUMAR VELOCIDADE DAS NAVES
  *		ARRUMAR BUG DE TIROS NA MESMA LINHA APAGAREM LINHA
  *		TERMINAR DE COMENTAR O CÓDIGO
@@ -495,7 +497,7 @@ void limpaNodoMatriz(void *mat[ROW][COL], t_node *atual)
 		case -1:
 			fim_i = 1;
 			ini_j = -2;
-			fim_j = 2;
+			fim_j = 3;
 			break;
 		case TRUE: /*caso da NAVE MAE*/
 			fim_i = 2;
@@ -525,7 +527,8 @@ void atualizaMatriz(void *mat[ROW][COL], t_node *atual)
 	 if ( atual->chave == TRUE )
 		 ini_col = -5;
 	 else
-		 ini_col = -3;
+		 ini_col = -2;
+
 
          while ( atual->sprite1[j] != '\0' )
          {
@@ -896,8 +899,7 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 		
 		movimentaTiros(t, l, win, mat);
 	}
-
-	if (( l->updateField % 70000 == 0 ) && ( l->moship->chave == TRUE )){
+	if (( l->updateField % 60000 == 0 ) && ( l->moship->chave == TRUE )){
 		wclear(win->moship);
 		movimentaMoShip(l, win->moship, mat);
 	}
@@ -934,6 +936,7 @@ int main()
   int key;
 /* GAME properties */
   int i, j;
+  int size_y, size_x; /*para posicionar tela no centro*/
   /* matriz de ponteiros que guarda a posição dos objetos do campo 
    * em suas coordenadas em forma do endereço do mesmo, para facilitar
    * detecção de colisão */
@@ -960,7 +963,7 @@ int main()
                 mvprintw( (gety/2)+1, (getx/3), "MINIMUM SIZE REQUIRED: 100x38");
                 flushinp(); /*limpa buffer de input*/
         }
-        else
+	else
         {
                 clear();
                 mvprintw(gety/2,(getx/2)-7,"PUSH 'a' TO BEGIN");
@@ -973,6 +976,8 @@ int main()
   clear();
   
   srand(time(NULL)); /*cria seed para rand()*/
+  size_y = (gety-ROW)/2;
+  size_x = (getx-COL)/2;
   
   for ( i=0; i<ROW; i++ )
       for ( j=0; j<COL; j++ )
@@ -984,14 +989,14 @@ int main()
   l.speed = 500000;
 
   /*INICIALIZA JANELAS A SEREM UTILIZADAS*/
-  win.moship = newwin(5,COL,1,1);
-  win.enemy = newwin(ROW-3,COL,1,1);
-  win.tank = newwin(ROW,COL,1,1);
-  win.fire1 = newwin(ROW,COL,1,1);
-  win.fire2 = newwin(ROW,COL,1,1);
-  win.score = newwin(ROW,COL,1,1);
+  win.moship = newwin(5,COL,size_y,size_x);
+  win.enemy = newwin(ROW-3,COL,size_y,size_x);
+  win.tank = newwin(ROW,COL,size_y,size_x);
+  win.fire1 = newwin(ROW,COL,size_y,size_x);
+  win.fire2 = newwin(ROW,COL,size_y,size_x);
+  win.score = newwin(ROW,COL,size_y,size_x);
   
-  borda(0, 0, ROW, COL+1); /*inicializa borda*/
+  borda(size_y, size_x-1, ROW+size_y, COL+size_x); /*inicializa borda*/
   
   /*INICIALIZA PARES DE COR E ATRIBUTOS PARA CADA JANELA*/
   init_pair(COR_NAVE, COLOR_ORANGE, COLOR_BLACK);
