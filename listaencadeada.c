@@ -45,7 +45,7 @@
 
 #define MORTE "\n \\'/ \n-   -\n /,\\ \0"
 
-#define BARREIRA "\n wvVwv \nVWW#V)V\n ( #   \0"
+#define BARREIRA "\n w)Vwv \nV (#( )\n(  #   \0"
 
 
 #define COR_BORDA 0
@@ -56,6 +56,8 @@
 #define COR_MOSHIP 5
 #define COR_SCORE 6
 #define COR_BARREIRA 7
+#define COR_BANANA 8
+#define COR_MADEIRA 9
 
 #define COLOR_BROWN 52
 #define COLOR_ORANGE 154
@@ -346,12 +348,14 @@ void printBarreiras(WINDOW *win, void *mat[ROW][COL])
 			else if (( nodoDetectado = mat[row][col+i] ) && ( nodoDetectado->chave == -2 ))
 			{
 				wmove(win, row, col+i);
-				if (BARREIRA[j] == '(' || BARREIRA[j] == ')')
+				if (BARREIRA[j] == ')')
+					waddch(win, BARREIRA[j] | COLOR_PAIR(COR_BANANA));
+				else if (BARREIRA[j] == '(')
 					waddch(win, BARREIRA[j] | COLOR_PAIR(COR_TIRO_TANQUE));
 				else if (BARREIRA[j] != '#')
 					waddch(win, BARREIRA[j] | COLOR_PAIR(COR_BARREIRA));
 				else
-					waddch(win, BARREIRA[j] | COLOR_PAIR(COR_SCORE));
+					waddch(win, BARREIRA[j] | COLOR_PAIR(COR_MADEIRA));
 			}
 
 			col++;
@@ -977,30 +981,26 @@ int main()
   
   /*INICIALIZA PARES DE COR E ATRIBUTOS PARA CADA JANELA*/
   init_pair(COR_NAVE, COLOR_ORANGE, COLOR_BLACK);
-  wattron(win.enemy, COLOR_PAIR(COR_NAVE));
-  wattron(win.enemy, A_BOLD);
+  wattron(win.enemy, COLOR_PAIR(COR_NAVE) | A_BOLD);
   
   init_pair(COR_TANQUE, COLOR_PINK, COLOR_BLACK);
-  wattron(win.tank, COLOR_PAIR(COR_TANQUE));
-  wattron(win.tank, A_BOLD);
- 
-  init_pair(COR_MOSHIP, COLOR_BLUE, COLOR_BLACK);
-  wattron(win.moship, COLOR_PAIR(COR_MOSHIP));
-  wattron(win.moship, A_BOLD);
+  wattron(win.tank, COLOR_PAIR(COR_TANQUE) | A_BOLD);
   
-  init_pair(COR_TIRO_TANQUE, COLOR_YELLOW, COLOR_BLACK);
-  wattron(win.fire1, COLOR_PAIR(COR_TIRO_TANQUE));
-  wattron(win.fire1, A_BOLD);
+  init_pair(COR_MOSHIP, COLOR_BLUE, COLOR_BLACK);
+  wattron(win.moship, COLOR_PAIR(COR_MOSHIP) | A_BOLD);
+  
+  init_pair(COR_TIRO_TANQUE, COLOR_YELLOW2, COLOR_BLACK);
+  wattron(win.fire1, COLOR_PAIR(COR_TIRO_TANQUE) | A_BOLD);
   
   init_pair(COR_TIRO_NAVE, COLOR_WHITE, COLOR_BLACK);
-  wattron(win.fire2, COLOR_PAIR(COR_TIRO_NAVE));
-  wattron(win.fire2, A_BOLD);
+  wattron(win.fire2, COLOR_PAIR(COR_TIRO_NAVE) | A_BOLD);
 
   init_pair(COR_SCORE, COLOR_YELLOW2, COLOR_BLACK);
-  wattron(win.score, COLOR_PAIR(COR_SCORE));
-  wattron(win.score, A_BOLD);
+  wattron(win.score, COLOR_PAIR(COR_SCORE) | A_BOLD);
   
-  init_pair(COR_BARREIRA, COLOR_GREEN, COLOR_BLACK);
+  init_pair(COR_BANANA, COLOR_YELLOW2, COLOR_GREEN);
+  init_pair(COR_MADEIRA, 130, COLOR_BROWN);
+  init_pair(COR_BARREIRA, COLOR_GREEN, COLOR_GREEN);
 
   /*INICIALIZA LinkedLists A SEREM UTILIZADAS*/
   inicializaListaNaves(&l);
