@@ -802,6 +802,7 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 			exit(1);
 		case 'p': /* BOTÃO DE PAUSE */
                 	flushinp(); /*limpa buffer de input*/
+  			nodelay(stdscr, FALSE);
 			while ( (key=getch()) != 'p')
 			{
 				if ( key == 'q' ){ /* PARA PODER SAIR DO JOGO DURANTE O PAUSE */
@@ -810,6 +811,7 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 				}
 				usleep(10000);
 			}
+  			nodelay(stdscr, TRUE);
 			break;
 		default:
 			break;
@@ -927,7 +929,6 @@ int main()
   cbreak();
   noecho();
   curs_set(FALSE);
-  nodelay(stdscr, TRUE);
   keypad(stdscr, TRUE);
   start_color();
 
@@ -949,8 +950,8 @@ int main()
         }
         refresh();
         getmaxyx(stdscr,gety, getx);
-        usleep(10000);
   }
+  nodelay(stdscr, TRUE);
   clear();
   
   srand(time(NULL)); /*cria seed para rand()*/
