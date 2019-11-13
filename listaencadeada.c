@@ -1,11 +1,13 @@
 /*	COISAS A FAZER:
- *		CRIAR FUNÇÃO PARA DESTRUIR LISTA
+ *		LIMPAR MATRIZ COLISAO DA BARREIRA DEPOIS DA LISTA DA MESMA SER DELETADA
+ *		UNIR FUNÇÕES DE t_wall e t_tiros OU USAR O MESMO STRUCT PARA TIRO E WALL
  *		CRIAR FUNÇÃO PARA REINICIAR O JOGO
  *		ARRUMAR VELOCIDADE DAS NAVES
  *		ARRUMAR BUG DE TIROS NA MESMA LINHA APAGAREM LINHA
  *		TERMINAR DE COMENTAR O CÓDIGO
  *		CRIAR INSTRUÇÃO DE CONTROLES ANTES DO JOGO INICIAR
  */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,8 +71,8 @@ struct t_node
 {
  int chave; /*para fins de identificação*/
 
- char *sprite1; /*aparência do elemento do nodo*/
- char *sprite2; /*<- ignorado para elementos com só 1 sprite*/
+ char *sprite1; /*primeira aparência do elemento do nodo*/
+ char *sprite2; /*segunda aparência do elemento do nodo*/
  
  int posx; /*posição x*/
  int posy; /*posição y*/
@@ -79,16 +81,25 @@ struct t_node
  struct t_node *prev; /*nodo anterior*/
 }; typedef struct t_node t_node;
 
+struct t_wall
+{
+ t_node *atual;
+
+ t_node *ini;
+ t_node *fim;
+
+ int tamanho;
+}; typedef struct t_wall t_wall;
+
 struct t_tiro
 {
  t_node *atual;
 
  t_node *ini;
  t_node *fim;
- t_node *barreira; /*aponta pro primeiro nodo da barreira*/
 
  int qtd_tiros1;
- int qtd_tiros2;
+ int tamanho;
 }; typedef struct t_tiro t_tiro;
 
 struct t_lista
@@ -103,7 +114,7 @@ struct t_lista
 
  int updateField; /*controla temporização*/
  char direcao; /*alterna dir de mov das naves*/
- int qtd_naves;
+ int tamanho;
  int score;
  unsigned int speed;
 }; typedef struct t_lista t_lista;
@@ -175,9 +186,49 @@ int inicializaListaNaves (t_lista *l)
 		last[i]->prox = moship_node;
 	last[i]->prev = first[i];
  }
- l->qtd_naves = 0;
+ l->tamanho = 0;
 
  return 1;
+}
+
+void destroiListaBarreira (t_wall *w)
+{
+	t_node *aux;
+
+	if( w->tamanho > 0 )
+	{
+		w->atual = w->ini->prox;
+		while(w->atual != w->fim)
+		{
+			aux = w->atual->prox;
+			aux->prev->prev = NULL;
+			aux->prev->prox = NULL;
+			free(w->atual);
+			w->atual = aux;
+		}
+		free(aux);
+		aux = NULL;
+	}
+}
+
+void destroiListaTiros (t_tiro *t)
+{
+	t_node *aux;
+
+	if( t->tamanho > 0 )
+	{
+		t->atual = t->ini->prox;
+		while(t->atual != t->fim)
+		{
+			aux = t->atual->prox;
+			aux->prev->prev = NULL;
+			aux->prev->prox = NULL;
+			free(t->atual);
+			t->atual = aux;
+		}
+		free(aux);
+		aux = NULL;
+	}
 }
 
 int inicializaListaTiros (t_tiro *t)
@@ -201,7 +252,7 @@ int inicializaListaTiros (t_tiro *t)
  last->prox = NULL;
 
  t->qtd_tiros1 = 0;
- t->qtd_tiros2 = 0;
+ t->tamanho = 0;
 
  return 1;
 }
@@ -269,7 +320,7 @@ int inicializaNaves (t_lista *l)
 			default:
 				break;
 		}
-		l->qtd_naves++; /*qtd de naves total*/
+		l->tamanho++; /*qtd de naves total*/
 	}
 	posCol += 4; /*pula fileira de 4 em 4*/
  }
@@ -277,21 +328,36 @@ int inicializaNaves (t_lista *l)
  return 1;
 }
 
-int inicializaBarreiras(t_tiro *t, void *mat[ROW][COL])
+int inicializaListaBarreiras(t_wall *w)
+{
+ t_node *first;
+ t_node *last;
+
+ first = (t_node*)malloc(sizeof(t_node));
+ last = (t_node*)malloc(sizeof(t_node));
+ if ( first == NULL || last == NULL )
+ {
+	free(first);
+	free(last);
+	return 0;
+ }
+ w->ini = first;
+ first->prox = last;
+ first->prev = NULL;
+ w->fim = last;
+ last->prev = first;
+ last->prox = NULL;
+
+ w->tamanho = 0;
+
+ return 1;
+}
+
+int inicializaBarreiras(t_wall *w, void *mat[ROW][COL])
 {
 	int row, col;
 	int i,j;
-	t_node *nodo_solto, *first;
-	
-	first = (t_node*)malloc(sizeof(t_node));
-	if (first == NULL){
-		free(first);
-		return 0;
-	}
-
-	t->barreira = first;
-	first->prox = NULL;
-	first->prev = NULL;
+	t_node *nodo_solto;
 	
 	for( i=0; i<84; i+=21)
 	{
@@ -311,15 +377,17 @@ int inicializaBarreiras(t_tiro *t, void *mat[ROW][COL])
 					free(nodo_solto);
 					return 0;
 				}
-				
-				nodo_solto->prev = t->barreira;
-				nodo_solto->prox = t->barreira->prox;
-				if ( t->barreira->prox != NULL)
-					t->barreira->prox->prev = nodo_solto;
-				t->barreira->prox = nodo_solto;
+				nodo_solto->prox = w->fim;
+				nodo_solto->prev = w->fim->prev;
+				w->fim->prev->prox = nodo_solto;
+				w->fim->prev = nodo_solto;
 				
 				nodo_solto->chave = -2;
+				nodo_solto->posy = row;
+				nodo_solto->posx = col+i;
 				mat[row][col+i] = nodo_solto;
+				
+				w->tamanho++;
 			}
 			col++;
 			j++;
@@ -640,6 +708,7 @@ int inicializaTiros(t_lista *l, t_tiro *t, int ID)
 		
 		new_fire->sprite1 = TIRO1;
 		t->qtd_tiros1++;
+		t->tamanho++;
 	}
 	else/*if ( ID == 2 )*/
 	{
@@ -647,7 +716,7 @@ int inicializaTiros(t_lista *l, t_tiro *t, int ID)
 		new_fire->posy = l->atual->posy+3;
 		
 		new_fire->sprite1 = TIRO2;
-		t->qtd_tiros2++;
+		t->tamanho++;
 	}
 	new_fire->sprite2 = MORTE;
 	return 1;
@@ -655,24 +724,23 @@ int inicializaTiros(t_lista *l, t_tiro *t, int ID)
 
 void removeAtualLista(t_node *atual)
 {
-	if (atual->prox != NULL)
-	{
+	if ( atual->prev )
 		atual->prev->prox = atual->prox;
+	if ( atual->prox )
 		atual->prox->prev = atual->prev;
-		free(atual);
-		atual = NULL;
-	}
+	free(atual);
+	atual = NULL;
 }
 
 /*FUNÇÃO RESPONSÁVEL POR MOVIMENTAR O TIRO DO USUÁRIO
  * E DOS INIMIGOS, A PARTIR DE UMA LISTA LINKADA
  * E CHECAR AS CONDIÇÕES DE COLISÃO ENTRE TIRO E OUTROS ELEMENTOS */
-void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
+void movimentaTiros(t_tiro *t, t_lista *l, t_wall *w, t_win *win, void *mat[ROW][COL])
 {
 	t_node *nodoDetectado;
 
 	t->atual = t->ini->prox;
-	if ((t->qtd_tiros1) || (t->qtd_tiros2))
+	if ( (t->tamanho) )
 	{
 		while (t->atual != t->fim)
 		{
@@ -686,8 +754,8 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 				{
 					if (nodoDetectado->chave == -2){ /*se o nodoDetectado for uma barreira*/
 						mat[t->atual->posy][t->atual->posx] = NULL;
-						free(nodoDetectado);
-						nodoDetectado = NULL;
+						removeAtualLista(nodoDetectado);
+						w->tamanho--;
 					}
 					else if (nodoDetectado->chave == TRUE){
 						l->score += 100;
@@ -698,7 +766,7 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 					else /*se for uma nave*/
 					{
 						l->score += nodoDetectado->chave;
-						l->qtd_naves--;
+						l->tamanho--;
 						if( l->speed > 10000 )
 							l->speed-=10000;	
 
@@ -710,12 +778,14 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 					wmove(win->fire1, t->atual->posy, t->atual->posx-2);
 					waddstr(win->fire1, EXPLOSAO_BANANA);	
 					t->qtd_tiros1--;
+					t->tamanho--;
 				}
 				else if ( t->atual->posy > 0 )
 					t->atual->posy--;
 				else{
 					removeAtualLista(t->atual);
 					t->qtd_tiros1--;
+					t->tamanho--;
 				}
 			}
 			else/*if ( t->atual->chave == 2 )*/	/*MOVIMENTA TIRO DAS NAVES*/
@@ -728,14 +798,13 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 					if (nodoDetectado->chave == -2) /*se o nodoDetectado for uma barreira*/
 					{
 						mat[t->atual->posy][t->atual->posx] = NULL;
-						free(nodoDetectado);
-						nodoDetectado = NULL;
-						
+						removeAtualLista(nodoDetectado);
 						removeAtualLista(t->atual);
 						
 						wmove(win->fire2, t->atual->posy, t->atual->posx);
 						waddstr(win->fire2, EXPLOSAO_COCO);	
-						t->qtd_tiros2--;
+						w->tamanho--;
+						t->tamanho--;
 					}
 					else if (nodoDetectado->chave == -1) /*se o nodoDetectado for o tanque*/
 					{
@@ -752,7 +821,7 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 					t->atual->posy++;
 				else{
 					removeAtualLista(t->atual);
-					t->qtd_tiros2--;
+					t->tamanho--;
 				}
 			}
 			t->atual = t->atual->prox;
@@ -763,7 +832,7 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_win *win, void *mat[ROW][COL])
 void printTiros(t_tiro *t, t_win *win)
 {
 	t->atual = t->ini->prox;
-	if ((t->qtd_tiros1) || (t->qtd_tiros2))
+	if ( (t->tamanho) )
 	{
 		while (t->atual != t->fim)
 		{
@@ -836,7 +905,21 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 	atualizaMatriz(mat, l->tanque);
 }
 
-int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
+void restartGame(t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[ROW][COL])
+{
+	l->updateField = 0;
+	/*l->direcao = RIGHT;*/
+	l->speed = 500000;
+	
+	destroiListaTiros(t);
+	destroiListaBarreira(w);
+
+	inicializaListaTiros(t);
+	inicializaListaBarreiras(w);
+
+}
+
+int GameOn(t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[ROW][COL])
 {
 	int key;
 	int utime = 10000;
@@ -872,7 +955,7 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 	{
 		if ( rand()%50 == 0 )
 		{
-			rand_range = rand() % l->qtd_naves;
+			rand_range = rand() % l->tamanho;
 			
 			j=0;
 			SWITCH = FALSE;
@@ -897,7 +980,7 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 		if (( l->moship->chave == FALSE ) && ( rand()%500 == 0 ))
 			l->moship->chave = TRUE;
 		
-		movimentaTiros(t, l, win, mat);
+		movimentaTiros(t, l, w, win, mat);
 	}
 	if (( l->updateField % 60000 == 0 ) && ( l->moship->chave == TRUE )){
 		wclear(win->moship);
@@ -911,8 +994,11 @@ int GameOn(t_lista *l, t_tiro *t, t_win *win, void *mat[ROW][COL])
 	
 	usleep(utime);
 	l->updateField += utime;
-	if ( l->qtd_naves == 0 )
+	if ( l->tamanho == 0 )
 		return 0;
+
+	if ( key == 'r' )
+		restartGame(l, t, w, win, mat[ROW][COL]);
 
 	return 1;
 }
@@ -944,6 +1030,7 @@ int main()
   
   t_lista l;
   t_tiro t;
+  t_wall w;
   t_win win;
 /* START ncurse */
   initscr();
@@ -1025,11 +1112,12 @@ int main()
   /*INICIALIZA LinkedLists A SEREM UTILIZADAS*/
   inicializaListaNaves(&l);
   inicializaListaTiros(&t);
+  inicializaListaBarreiras(&w);
 
   inicializaNaves(&l); /*cria e insere os nodos das naves na lista*/
-  inicializaBarreiras(&t, mat); 
+  inicializaBarreiras(&w, mat); 
   /*função principal que controla o tempo e chama todas as outras funções pro funcionamento do jogo*/
-  while ( GameOn(&l, &t, &win, mat) );
+  while ( GameOn(&l, &t, &w, &win, mat) );
   sleep(2);
   
   endwin();
