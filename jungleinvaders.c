@@ -1,4 +1,7 @@
 /*	COISAS A FAZER:
+ *		DAR FREE ONDE FALTA DAR FREE
+ *		ARRUMAR LISTA DE BARREIRAS
+ *		ARRUMAR LIMPEZA DE MATRIZ (?)
  *		TERMINAR DE COMENTAR O CÓDIGO
  *		CRIAR INSTRUÇÃO DE CONTROLES ANTES DO JOGO INICIAR
  */
@@ -44,18 +47,16 @@
 
 #define BARREIRA "\n w)Vwv \nV (#( )\n(  #   \0"
 
-
-#define COR_BORDA 0
-#define COR_NAVE 1
-#define COR_TANQUE 2
-#define COR_TIRO_NAVE 3
-#define COR_TIRO_TANQUE 4
-#define COR_MOSHIP 5
-#define COR_SCORE 6
-#define COR_BARREIRA 7
-#define COR_BANANA 8
-#define COR_MADEIRA 9
-#define COR_MACACO 10
+#define COR_TANQUE 1
+#define COR_TIRO_TANQUE 2
+#define COR_MACACO 3
+#define COR_SCORE 4
+#define COR_NAVE 5
+#define COR_MADEIRA 6
+#define COR_MOSHIP 7
+#define COR_BARREIRA 8
+#define COR_TIRO_NAVE 9
+#define COR_BANANA 10
 
 #define COLOR_BROWN 52
 #define COLOR_ORANGE 154
@@ -122,6 +123,8 @@ struct t_win /* para facilitar na hora de chamar janela nas funções */
  WINDOW *fire1; /*janela que contém tiro do player*/
  WINDOW *fire2; /*janela que contém tiro inimigo*/
  WINDOW *score; /*janela que contém animação de pontuação*/
+ 
+ int gety, getx; /*para guardar definições das dimensões do terminal*/
 }; typedef struct t_win t_win;
 
 /* CRIA SENTINELAS NA LISTA PARA FACILITAR O ACESSO E MANIPULAÇÃO
@@ -193,7 +196,7 @@ void destroiListaBarreira (t_wall *w)
 	if( w->tamanho > 0 )
 	{
 		w->atual = w->ini->prox;
-		while(w->atual != w->fim)
+		while(w->atual->prox != w->fim)
 		{
 			aux = w->atual->prox;
 			aux->prev->prev = NULL;
@@ -213,7 +216,7 @@ void destroiListaTiros (t_tiro *t)
 	if( t->tamanho > 0 )
 	{
 		t->atual = t->ini->prox;
-		while(t->atual != t->fim)
+		while(t->atual->prox != t->fim)
 		{
 			aux = t->atual->prox;
 			aux->prev->prev = NULL;
@@ -230,6 +233,11 @@ int inicializaListaTiros (t_tiro *t)
 {
  t_node *first;
  t_node *last;
+ 
+ if (t->ini)
+	 free(t->ini);
+ if (t->fim)
+ 	free(t->fim);
 
  first = (t_node*)malloc(sizeof(t_node));
  last = (t_node*)malloc(sizeof(t_node));
@@ -327,6 +335,11 @@ int inicializaListaBarreiras(t_wall *w)
 {
  t_node *first;
  t_node *last;
+
+ if (w->ini)
+	 free(w->ini);
+ if (w->fim)
+ 	free(w->fim);
 
  first = (t_node*)malloc(sizeof(t_node));
  last = (t_node*)malloc(sizeof(t_node));
@@ -898,33 +911,48 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 	atualizaMatriz(mat, l->tanque);
 }
 
+void borda(int y1, int x1, int y2, int x2)
+{
+    mvhline(y1, x1, 0, x2-x1);
+    mvhline(y2, x1, 0, x2-x1);
+    mvvline(y1, x1, 0, y2-y1);
+    mvvline(y1, x2, 0, y2-y1);
+    mvaddch(y1, x1, ACS_ULCORNER);
+    mvaddch(y2, x1, ACS_LLCORNER);
+    mvaddch(y1, x2, ACS_URCORNER);
+    mvaddch(y2, x2, ACS_LRCORNER);
+}
+
 void restartGame(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[ROW][COL])
 {
 	int i, j;
 	
-	*level-=10000;
+	*level+=10000;
 	l->updateField = 0;
 	l->direcao = RIGHT;
 	l->speed = 500000 - *level;
 	
 	destroiListaTiros(t);
 	destroiListaBarreira(w);
-	
 	for ( i=0; i<ROW; i++)
 		for ( j=0; j<COL; j++ )
 			mat[i][j] = NULL;
-
-	inicializaListaTiros(t);
+	
 	inicializaListaBarreiras(w);
+	inicializaListaTiros(t);
   	
 	inicializaBarreiras(w, mat); 
   	inicializaNaves(l);
 
-	wclear(win->tank);
-	wclear(win->enemy);
-	wclear(win->fire1);
-	wclear(win->score);
-	wclear(win->moship);
+	clear();
+	mvprintw((win->gety)/2, (win->getx)/2, "LEVEL %d", (*level/10000)+1);
+	refresh();
+	sleep(2);
+	
+  	borda((win->gety-ROW)/2,(win->getx-COL)/2 -1,((win->gety-ROW)/2)+ROW,((win->getx-COL)/2)+COL); /*inicializa borda*/
+	wattron(win->enemy, COLOR_PAIR(rand()%4 +1) | A_BOLD);
+	
+	flushinp();
 }
 
 int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[ROW][COL])
@@ -1005,28 +1033,14 @@ int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[R
 
 	if ( l->tamanho == 0 )
 		restartGame(level, l, t, w, win, mat);
-
+	
 	return 1;
-}
-
-void borda(int y1, int x1, int y2, int x2)
-{
-    mvhline(y1, x1, 0, x2-x1);
-    mvhline(y2, x1, 0, x2-x1);
-    mvvline(y1, x1, 0, y2-y1);
-    mvvline(y1, x2, 0, y2-y1);
-    mvaddch(y1, x1, ACS_ULCORNER);
-    mvaddch(y2, x1, ACS_LLCORNER);
-    mvaddch(y1, x2, ACS_URCORNER);
-    mvaddch(y2, x2, ACS_LRCORNER);
 }
 
 int main()
 {
-/* WINDOW properties */
-  int gety, getx;
-  int key;
 /* GAME properties */
+  int key;
   int i, j;
   int size_y, size_x; /*para posicionar tela no centro*/
   /* matriz de ponteiros que guarda a posição dos objetos do campo 
@@ -1047,37 +1061,38 @@ int main()
   keypad(stdscr, TRUE);
   start_color();
 
-  getmaxyx(stdscr, gety, getx);
+  getmaxyx(stdscr, win.gety, win.getx);
   while (key != 'a')
   {
-        if ( getx<COL || gety<ROW )
+        if ( win.getx<COL || win.gety<ROW )
         {
                 clear();
-                mvprintw(gety/2,getx/3,"TERMINAL SIZE: %dx%d", getx, gety);
-                mvprintw( (gety/2)+1, (getx/3), "MINIMUM SIZE REQUIRED: 100x38");
+                mvprintw(win.gety/2,win.getx/3,"TERMINAL SIZE: %dx%d", win.getx, win.gety);
+                mvprintw( (win.gety/2)+1, (win.getx/3), "MINIMUM SIZE REQUIRED: 100x38");
                 flushinp(); /*limpa buffer de input*/
         }
 	else
         {
                 clear();
-                mvprintw(gety/2,(getx/2)-7,"PUSH 'a' TO BEGIN");
+                mvprintw(win.gety/2,(win.getx/2)-7,"PUSH 'a' TO BEGIN");
                 key = getch();
         }
         refresh();
-        getmaxyx(stdscr,gety, getx);
+        getmaxyx(stdscr,win.gety, win.getx);
   }
   nodelay(stdscr, TRUE);
   clear();
   
   srand(time(NULL)); /*cria seed para rand()*/
-  size_y = (gety-ROW)/2;
-  size_x = (getx-COL)/2;
+  size_y = (win.gety-ROW)/2;
+  size_x = (win.getx-COL)/2;
   
   for ( i=0; i<ROW; i++ )
       for ( j=0; j<COL; j++ )
           mat[i][j] = NULL; /*preenche elementos da matriz de ponteiros com NULL*/
   
   level = 0;
+  
   l.updateField = 0; /*temporizador de controle começa no 0*/
   l.direcao = RIGHT; /*naves começam se movendo para a direita*/
   l.score = 0; /*inicializa score no zero*/
@@ -1091,12 +1106,8 @@ int main()
   win.fire2 = newwin(ROW,COL,size_y,size_x);
   win.score = newwin(ROW,COL,size_y,size_x);
   
-  borda(size_y, size_x-1, ROW+size_y, COL+size_x); /*inicializa borda*/
   
   /*INICIALIZA PARES DE COR E ATRIBUTOS PARA CADA JANELA*/
-  init_pair(COR_NAVE, COLOR_ORANGE, COLOR_BLACK);
-  wattron(win.enemy, COLOR_PAIR(COR_NAVE) | A_BOLD);
-  
   init_pair(COR_TANQUE, COLOR_PINK, COLOR_BLACK);
   wattron(win.tank, COLOR_PAIR(COR_TANQUE) | A_BOLD);
   
@@ -1112,18 +1123,29 @@ int main()
   init_pair(COR_SCORE, COLOR_YELLOW2, COLOR_BLACK);
   wattron(win.score, COLOR_PAIR(COR_SCORE) | A_BOLD);
   
+  init_pair(COR_NAVE, COLOR_ORANGE, COLOR_BLACK);
+  wattron(win.enemy, COLOR_PAIR(COR_NAVE) | A_BOLD);
+  
   init_pair(COR_BANANA, COLOR_YELLOW2, COLOR_GREEN);
   init_pair(COR_MACACO, 130, COLOR_BLACK);
   init_pair(COR_MADEIRA, 130, COLOR_BROWN);
   init_pair(COR_BARREIRA, COLOR_GREEN, COLOR_GREEN);
+  
 
-  /*INICIALIZA LinkedLists A SEREM UTILIZADAS*/
+  /*INICIALIZA LISTA
+   * AS OUTRAS LISTAS SÃO INICIADAS E PREENCHIDAS
+   * NA FUNÇÃO restartGame()*/
   inicializaListaNaves(&l);
   inicializaListaTiros(&t);
   inicializaListaBarreiras(&w);
-
-  inicializaNaves(&l); /*cria e insere os nodos das naves na lista*/
+  	
+  inicializaNaves(&l);
   inicializaBarreiras(&w, mat); 
+  
+  mvprintw((win.gety)/2, (win.getx)/2, "LEVEL 1");
+  refresh();
+  borda(size_y,size_x-1,size_y+ROW,size_x+COL); /*inicializa borda*/
+  sleep(2);
   /*função principal que controla o tempo e chama todas as outras funções pro funcionamento do jogo*/
   while ( GameOn(&level, &l, &t, &w, &win, mat) );
   sleep(2);
