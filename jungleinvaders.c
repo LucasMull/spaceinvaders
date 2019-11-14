@@ -1,7 +1,5 @@
 /*	COISAS A FAZER:
- *		DAR FREE ONDE FALTA DAR FREE
- *		ARRUMAR LISTA DE BARREIRAS
- *		ARRUMAR LIMPEZA DE MATRIZ (?)
+ *		CRIAR FUNÇÕES GENÉRICAS
  *		TERMINAR DE COMENTAR O CÓDIGO
  *		CRIAR INSTRUÇÃO DE CONTROLES ANTES DO JOGO INICIAR
  */
@@ -13,7 +11,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
-
+#include "asciiART.h"
 
 #define ROW 38
 #define COL 100
@@ -1037,10 +1035,50 @@ int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[R
 	return 1;
 }
 
+void titleScreen(t_win *win)
+{
+  int key;
+  WINDOW *temp, *temp2;
+  
+  while ( win->getx<COL || win->gety<ROW )
+  {
+  	clear();
+  	getmaxyx(stdscr, win->gety, win->getx);
+        mvprintw(win->gety/2,win->getx/3,"TERMINAL SIZE: %dx%d", win->getx, win->gety);
+        mvprintw((win->gety/2)+1, (win->getx/3), "MINIMUM SIZE REQUIRED: 100x38");
+	usleep(60000);
+        flushinp(); /*limpa buffer de input*/
+	refresh();
+  }
+  
+  temp = newwin(ROW/2+1,COL-5,(win->gety-ROW)/2+5,(win->getx-COL)/2+4);
+  init_pair(30, COLOR_GREEN, COLOR_BLACK);
+  wattron(temp, COLOR_PAIR(30) | A_BOLD );
+  temp2 = newwin(ROW,COL,(win->gety-ROW)/2,(win->getx-COL)/2);
+  clear(); 
+  while (key != 'a')
+  {
+	wclear(temp);
+	wclear(temp2);
+	wmove(temp,win->gety/2-15,win->getx/2);
+        wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,T15);
+	wmove(temp2,win->gety-10,win->getx/4);
+        wprintw(temp2,"PUSH 'a' TO BEGIN\n\n\n\n\n\n\n github.com/LucasMull");
+	box(temp2, '*', '*');
+	wrefresh(temp2);
+	wrefresh(temp);
+	
+	key = getch();
+	usleep(60000);
+  }
+  flushinp(); /*limpa buffer de input*/
+  
+  clear();
+}
+
 int main()
 {
 /* GAME properties */
-  int key;
   int i, j;
   int size_y, size_x; /*para posicionar tela no centro*/
   /* matriz de ponteiros que guarda a posição dos objetos do campo 
@@ -1058,30 +1096,11 @@ int main()
   cbreak();
   noecho();
   curs_set(FALSE);
+  nodelay(stdscr, TRUE);
   keypad(stdscr, TRUE);
   start_color();
-
-  getmaxyx(stdscr, win.gety, win.getx);
-  while (key != 'a')
-  {
-        if ( win.getx<COL || win.gety<ROW )
-        {
-                clear();
-                mvprintw(win.gety/2,win.getx/3,"TERMINAL SIZE: %dx%d", win.getx, win.gety);
-                mvprintw( (win.gety/2)+1, (win.getx/3), "MINIMUM SIZE REQUIRED: 100x38");
-                flushinp(); /*limpa buffer de input*/
-        }
-	else
-        {
-                clear();
-                mvprintw(win.gety/2,(win.getx/2)-7,"PUSH 'a' TO BEGIN");
-                key = getch();
-        }
-        refresh();
-        getmaxyx(stdscr,win.gety, win.getx);
-  }
-  nodelay(stdscr, TRUE);
-  clear();
+  
+  titleScreen(&win);
   
   srand(time(NULL)); /*cria seed para rand()*/
   size_y = (win.gety-ROW)/2;
