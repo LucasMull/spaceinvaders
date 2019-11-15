@@ -1,4 +1,5 @@
 /*	COISAS A FAZER:
+ *		FAZER COM QUE O GAMEOVER EXCLUA TODOS OS PONTEIROS E DÊ FREE
  *		CRIAR FUNÇÕES GENÉRICAS
  *		TERMINAR DE COMENTAR O CÓDIGO
  *		CRIAR INSTRUÇÃO DE CONTROLES ANTES DO JOGO INICIAR
@@ -165,7 +166,7 @@ int inicializaListaNaves (t_lista *l)
 
  l->ini[0] = first[0];
  first[0]->prox = last[0];
- first[0]->prev = tanque_node;
+ first[0]->prev = NULL;
  l->fim[0] = last[0];
  last[0]->prox = first[1];
  last[0]->prev = first[0];
@@ -179,7 +180,7 @@ int inicializaListaNaves (t_lista *l)
 	if ( i+1 < 5)
 		last[i]->prox = first[i+1];
 	else
-		last[i]->prox = moship_node;
+		last[i]->prox = NULL;
 	last[i]->prev = first[i];
  }
  l->tamanho = 0;
@@ -495,7 +496,7 @@ void printNaves(t_lista *l, t_win *win)
 		}
 		else
 		{	
-			if ( l->moship->posx % 3 == 0 ){
+			if ( l->moship->posx % 2 == 0 ){
 				wmove(win->moship, l->moship->posy+row, l->moship->posx+col);
 				waddch(win->moship, l->moship->sprite1[j]);
 			}
@@ -540,7 +541,7 @@ void printNaves(t_lista *l, t_win *win)
 	}
 }
 
-void desceNaves(t_lista *l)
+void desceNaves(t_lista *l, t_win *win)
 {
 	t_node *aux;
 
@@ -551,10 +552,8 @@ void desceNaves(t_lista *l)
 			aux->posy++;
 			aux = aux->prev;
 		}
-		else{ /* naves descem no row do tanque e gameover */
-			endwin();
-			exit(1);
-		}
+		else /* naves descem no row do tanque e gameover */
+			GameOver(l, win);
 	}
 }
 
@@ -585,7 +584,7 @@ void limpaNodoMatriz(void *mat[ROW][COL], t_node *atual)
 	 
 	for ( i=-1;i<=fim_i;i++ )
 		for ( j=ini_j;j<=fim_j;j++ ){
-		/*	mvaddch(atual->posy+i,atual->posx+j, '@');*/
+			/*mvaddch(atual->posy+i,atual->posx+j+COL/2-16, '@');*/
 			mat[atual->posy+i][atual->posx+j] = NULL;
 		}
 }
@@ -609,8 +608,8 @@ void atualizaMatriz(void *mat[ROW][COL], t_node *atual)
                         col=ini_col;
                 }
 		else if ( atual->sprite1[j] != ' ' ){
+			/*mvaddch(atual->posy+row,atual->posx+col+COL/2-16, '@');*/
 			mat[atual->posy+row][atual->posx+col] = atual;
-		/*	mvaddch(atual->posy+row,atual->posx+col, '@');*/
 		}
 		
 		col++;
@@ -630,7 +629,7 @@ void movimentaMoShip(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 	atualizaMatriz(mat, l->moship);
 }
 
-void movimentaNaves(t_lista *l, WINDOW *win, void *mat[ROW][COL])
+void movimentaNaves(t_lista *l, t_win *win, void *mat[ROW][COL])
 {
 	int i;
 	int SWITCH; /*para controlar saída do nested loop*/ 
@@ -654,7 +653,7 @@ void movimentaNaves(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 				else
 				{
 					l->direcao = LEFT;
-					desceNaves(l);
+					desceNaves(l, win);
 					atualizaMatriz(mat, l->atual);
 						
 					SWITCH = TRUE; /*força saída do nested loop*/
@@ -676,7 +675,7 @@ void movimentaNaves(t_lista *l, WINDOW *win, void *mat[ROW][COL])
 				else
 				{
 					l->direcao = RIGHT;
-					desceNaves(l);
+					desceNaves(l, win);
 					atualizaMatriz(mat, l->atual);
 						
 					SWITCH = TRUE; /*força saída do nested loop*/
@@ -712,7 +711,6 @@ int inicializaTiros(t_lista *l, t_tiro *t, int ID)
 		
 		new_fire->sprite1 = TIRO1;
 		t->qtd_tiros1++;
-		t->tamanho++;
 	}
 	else/*if ( ID == 2 )*/
 	{
@@ -720,8 +718,8 @@ int inicializaTiros(t_lista *l, t_tiro *t, int ID)
 		new_fire->posy = l->atual->posy+3;
 		
 		new_fire->sprite1 = TIRO2;
-		t->tamanho++;
 	}
+	t->tamanho++;
 	new_fire->sprite2 = MORTE;
 	return 1;
 }
@@ -734,6 +732,33 @@ void removeAtualLista(t_node *atual)
 		atual->prox->prev = atual->prev;
 	free(atual);
 	atual = NULL;
+}
+
+int GameOver(t_lista *l, t_win *win)
+{
+	int key;
+	
+	clear();
+	mvprintw(win->gety/2-10, win->getx/2-35, GO1);
+	mvprintw(win->gety/2-9, win->getx/2-35, GO2);
+	mvprintw(win->gety/2-8, win->getx/2-35, GO3);
+	mvprintw(win->gety/2-7, win->getx/2-35, GO4);
+	mvprintw(win->gety/2-6, win->getx/2-35, GO5);
+	mvprintw(win->gety/2-5, win->getx/2-35, GO6);
+	mvprintw(win->gety/2-4, win->getx/2-35, GO7);
+
+	mvprintw(win->gety/2+1, win->getx/2-7, " SCORE: %d", l->score);
+	mvprintw(win->gety-11, win->getx/2-10, "PUSH 'r' TO RESTART");
+	mvprintw(win->gety-10, win->getx/2-10, " PUSH 'q' TO QUIT");
+	while ( (key = getch()) != 'q' ){ /*quita o jogo*/
+		refresh();
+		if (key == 'r') /*reinicia o jogo*/
+			return main();
+		flushinp();
+		usleep(60000);
+	}
+	endwin();
+	exit(1);
 }
 
 /*FUNÇÃO RESPONSÁVEL POR MOVIMENTAR O TIRO DO USUÁRIO
@@ -813,11 +838,10 @@ void movimentaTiros(t_tiro *t, t_lista *l, t_wall *w, t_win *win, void *mat[ROW]
 					else if (nodoDetectado->chave == -1) /*se o nodoDetectado for o tanque*/
 					{
 						wmove(win->fire2, t->atual->posy, t->atual->posx-2);
-						waddstr(win->fire2, "*\"@\",");	
+						waddstr(win->fire2, EXPLOSAO_COCO);	
 						wrefresh(win->fire2);
 						sleep(2);
-						endwin();
-						exit(1);	
+						GameOver(l, win);
 					}
 				}
 				
@@ -962,6 +986,13 @@ int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[R
 	
 	if ( l->updateField % 60000 == 0 )
 	{	
+		/*para ajudar a debugar*/
+		mvprintw(0,0,"NAVES: %d ",l->tamanho);
+		mvprintw(1,0,"TIROS USER: %d     ",t->qtd_tiros1);
+		mvprintw(2,0,"TIROS: %d     ",t->tamanho);
+		mvprintw(3,0,"BARREIRA: %d",w->tamanho);
+		refresh();
+		/**/
 		printBarreiras(win->enemy, mat);
 		printNaves(l, win);
 		printTanque(l, win->tank);
@@ -983,10 +1014,15 @@ int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[R
 		wrefresh(win->score);
 	}
 
-	key = getch();
-	movimentaTanque(l, t, win->tank, key, mat);
 	if ( l->updateField % 40000 == 0 )
 	{
+		if (( l->moship->chave == FALSE ) && ( rand()%500 == 0 ))
+			l->moship->chave = TRUE;
+		else if (l->moship->chave == TRUE){
+			wclear(win->moship);
+			movimentaMoShip(l, win->moship, mat);
+		}
+
 		if ( rand()%50 == 0 )
 		{
 			rand_range = rand() % l->tamanho;
@@ -1011,18 +1047,12 @@ int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[R
 			}
 			inicializaTiros(l, t, 2);
 		}	
-		if (( l->moship->chave == FALSE ) && ( rand()%500 == 0 ))
-			l->moship->chave = TRUE;
 		
 		movimentaTiros(t, l, w, win, mat);
 	}
-	if (( l->updateField % 60000 == 0 ) && ( l->moship->chave == TRUE )){
-		wclear(win->moship);
-		movimentaMoShip(l, win->moship, mat);
-	}
 	if ( l->updateField % (l->speed+50000) == 0 ){
 		wclear(win->enemy);
-		movimentaNaves(l, win->enemy, mat);
+		movimentaNaves(l, win, mat);
 		l->updateField = 0;
 	}
 	
@@ -1031,6 +1061,9 @@ int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[R
 
 	if ( l->tamanho == 0 )
 		restartGame(level, l, t, w, win, mat);
+	
+	key = getch();
+	movimentaTanque(l, t, win->tank, key, mat);
 	
 	return 1;
 }
@@ -1044,8 +1077,8 @@ void titleScreen(t_win *win)
   {
   	clear();
   	getmaxyx(stdscr, win->gety, win->getx);
-        mvprintw(win->gety/2,win->getx/3,"TERMINAL SIZE: %dx%d", win->getx, win->gety);
-        mvprintw((win->gety/2)+1, (win->getx/3), "MINIMUM SIZE REQUIRED: 100x38");
+        mvprintw(win->gety/2,win->getx/2-12,"TERMINAL SIZE: %dx%d", win->getx, win->gety);
+        mvprintw((win->gety/2)+1, win->getx/2-12, "MINIMUM SIZE REQUIRED: 100x38");
 	usleep(60000);
         flushinp(); /*limpa buffer de input*/
 	refresh();
@@ -1062,8 +1095,8 @@ void titleScreen(t_win *win)
 	wclear(temp2);
 	wmove(temp,win->gety/2-15,win->getx/2);
         wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,T15);
-	wmove(temp2,win->gety-10,win->getx/4);
-        wprintw(temp2,"PUSH 'a' TO BEGIN\n\n\n\n\n\n\n github.com/LucasMull");
+	wmove(temp2,win->gety-10,win->getx/2-43);
+        wprintw(temp2,"PUSH 'a' TO BEGIN\n\n\n\n\n\n\n\n github.com/LucasMull");
 	box(temp2, '*', '*');
 	wrefresh(temp2);
 	wrefresh(temp);
