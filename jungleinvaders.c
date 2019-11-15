@@ -552,8 +552,10 @@ void desceNaves(t_lista *l, t_win *win)
 			aux->posy++;
 			aux = aux->prev;
 		}
-		else /* naves descem no row do tanque e gameover */
+		else{ /* naves descem no row do tanque e gameover */
+			sleep(2);
 			GameOver(l, win);
+		}
 	}
 }
 
