@@ -21,3 +21,25 @@
 #define GO5 "  \\ \\ \\/, \\/\\ \\L\\.\\_/\\ \\/\\ \\/\\ \\/\\  __/\\ \\ \\_\\ \\ \\ \\_/ |/\\  __/\\ \\ \\/ \0"
 #define GO6 "   \\ \\____/\\ \\__/.\\_\\ \\_\\ \\_\\ \\_\\ \\____\\\\ \\_____\\ \\___/ \\ \\____\\\\ \\_\\ \0"
 #define GO7 "    \\/___/  \\/__/\\/_/\\/_/\\/_/\\/_/\\/____/ \\/_____/\\/__/   \\/____/ \\/_/ \0"
+
+#define SHIP11 "\n >v< \n /Y\\ \n  Ww \0"
+#define SHIP12 "\n ovo \n (Yw \n W   \0"
+#define SHIP21 "\n!'v'!\n/'\"'\\\n w W \0"
+#define SHIP22 "\n!'0'!\n(>\"<)\n W w \0"
+#define SHIP31 "\n{ovo}\n(^^^)\n W W \0"
+#define SHIP32 "\n{OvO}\n/^^^\\\n W W \0"
+
+#define TANK1 "\nm'_,m\n<-\"->\0"
+#define TANK2 "\nm._' \n<-\"-m\0"
+
+#define MOSHIP1 "\n|\"|'-'L_ \n|SAFARI_|\nJ(x)\"\"(x)\0"
+#define MOSHIP2 "\n|\"|'O'L_ \n|SAFARI_|\nJ(+)\"\"(+)\0"
+
+#define TIRO1 "(\0"
+#define TIRO2 "&\0"
+#define EXPLOSAO_BANANA "\"%@\"\0"
+#define EXPLOSAO_COCO "\"@\","	
+
+#define MORTE "\n \\'/ \n-   -\n /,\\ \0"
+
+#define BARREIRA "\n w)Vwv \nV (#( )\n(  #   \0"

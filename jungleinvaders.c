@@ -23,29 +23,6 @@
 #define TRUE 1
 #define FALSE 0
 
-
-#define SHIP11 "\n >v< \n /Y\\ \n  Ww \0"
-#define SHIP12 "\n ovo \n (Yw \n W   \0"
-#define SHIP21 "\n!'v'!\n/'\"'\\\n w W \0"
-#define SHIP22 "\n!'0'!\n(>\"<)\n W w \0"
-#define SHIP31 "\n{ovo}\n(^^^)\n W W \0"
-#define SHIP32 "\n{OvO}\n/^^^\\\n W W \0"
-
-#define TANK1 "\nm'_,m\n<-\"->\0"
-#define TANK2 "\nm._' \n<-\"-m\0"
-
-#define MOSHIP1 "\n|\"|'-'L_ \n|SAFARI_|\nJ(x)\"\"(x)\0"
-#define MOSHIP2 "\n|\"|'O'L_ \n|SAFARI_|\nJ(+)\"\"(+)\0"
-
-#define TIRO1 "(\0"
-#define TIRO2 "&\0"
-#define EXPLOSAO_BANANA "\"%@\"\0"
-#define EXPLOSAO_COCO "\"@\","	
-
-#define MORTE "\n \\'/ \n-   -\n /,\\ \0"
-
-#define BARREIRA "\n w)Vwv \nV (#( )\n(  #   \0"
-
 #define COR_TANQUE 1
 #define COR_TIRO_TANQUE 2
 #define COR_MACACO 3
@@ -1098,7 +1075,7 @@ void titleScreen(t_win *win)
 	wmove(temp,win->gety/2-15,win->getx/2);
         wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,T15);
 	wmove(temp2,win->gety-10,win->getx/2-43);
-        wprintw(temp2,"PUSH 'a' TO BEGIN\n\n\n\n\n\n\n\n github.com/LucasMull");
+        wprintw(temp2,"PUSH 'a' TO BEGIN\n\n\n\n\n\n\n github.com/LucasMull");
 	box(temp2, '*', '*');
 	wrefresh(temp2);
 	wrefresh(temp);
