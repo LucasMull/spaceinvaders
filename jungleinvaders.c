@@ -148,21 +148,33 @@ void titleScreen(t_win *win)
 void GameOver(t_lista *l, t_win *win)
 {
   	WINDOW *temp, *temp2;
-	
+	int key;
+
 	wclear(stdscr);
 	temp = newwin(ROW/2-5,COL-15,(win->gety-ROW)/2+5,(win->getx-COL)/2+15);
 	init_pair(30, COLOR_RED, COLOR_BLACK);
 	wattron(temp, COLOR_PAIR(30) | A_BOLD );
 	temp2 = newwin(ROW-1,COL,(win->gety-ROW)/2+1,(win->getx-COL)/2);
-		
+	
 	wmove(temp,win->gety/2-15,win->getx/2);
 	wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s",GO1,GO2,GO3,GO4,GO5,GO6,GO7);
 	wmove(temp2,win->gety/2,win->getx/2-38);
 	wprintw(temp2,"SCORE: %d", l->score);
-	wrefresh(temp2);
-	wrefresh(temp);
-		
-	sleep(5);
+	mvwprintw(temp2,ROW-10,win->getx/2-46,"PUSH 'r' TO START NEW GAME" );
+	mvwprintw(temp2,ROW-9,win->getx/2-41,"PUSH 'q' TO QUIT" );
+	
+	while ( (key=getch())!='q' )
+	{	
+		if (key == 'r') /*termina processo atual e reinicia um novo no lugar, a partir de um código bash*/
+		{	
+			endwin();
+			system("./.newgame");
+			exit(1);
+		}
+		wrefresh(temp2);
+		wrefresh(temp);
+		usleep(10000);
+	}	
 	endwin();
 	exit(1);	
 }

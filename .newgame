@@ -1,0 +1,7 @@
+#!/bin/bash
+
+PID=$(pidof ./JungleInvaders)
+
+kill -SIGINT $PID
+pkill -HUP inetd
+./JungleInvaders
