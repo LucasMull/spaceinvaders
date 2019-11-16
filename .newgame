@@ -2,6 +2,7 @@
 
 PID=$(pidof ./JungleInvaders)
 
+clear
 kill -SIGINT $PID
 pkill -HUP inetd
 ./JungleInvaders
