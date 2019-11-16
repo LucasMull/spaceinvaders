@@ -1,4 +1,5 @@
 /*	COISAS A FAZER:
+ *		INVESTIGAR PORQUE POSIÇÃO DOS ELEMENTOS DA STRUCT N RESETAM NO RETURN MAIN()
  *		FAZER COM QUE O GAMEOVER EXCLUA TODOS OS PONTEIROS E DÊ FREE
  *		CRIAR FUNÇÕES GENÉRICAS
  *		TERMINAR DE COMENTAR O CÓDIGO
@@ -102,6 +103,69 @@ struct t_win /* para facilitar na hora de chamar janela nas funções */
  
  int gety, getx; /*para guardar definições das dimensões do terminal*/
 }; typedef struct t_win t_win;
+
+void titleScreen(t_win *win)
+{
+  int key;
+  WINDOW *temp, *temp2;
+  
+  while ( win->getx<COL || win->gety<ROW )
+  {
+  	clear();
+  	getmaxyx(stdscr, win->gety, win->getx);
+        mvprintw(win->gety/2,win->getx/2-12,"TERMINAL SIZE: %dx%d", win->getx, win->gety);
+        mvprintw((win->gety/2)+1, win->getx/2-12, "MINIMUM SIZE REQUIRED: 100x38");
+	usleep(60000);
+        flushinp(); /*limpa buffer de input*/
+	refresh();
+  }
+  
+  temp = newwin(ROW/2+1,COL-5,(win->gety-ROW)/2+5,(win->getx-COL)/2+4);
+  init_pair(30, COLOR_GREEN, COLOR_BLACK);
+  wattron(temp, COLOR_PAIR(30) | A_BOLD );
+  temp2 = newwin(ROW,COL,(win->gety-ROW)/2,(win->getx-COL)/2);
+  clear(); 
+  while (key != 'a')
+  {
+	wclear(temp);
+	wclear(temp2);
+	wmove(temp,win->gety/2-15,win->getx/2);
+        wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,T15);
+	wmove(temp2,win->gety-10,win->getx/2-43);
+        wprintw(temp2,"PUSH 'a' TO BEGIN\n\n\n\n\n\n\n github.com/LucasMull");
+	box(temp2, '*', '*');
+	wrefresh(temp2);
+	wrefresh(temp);
+	
+	key = getch();
+	usleep(60000);
+  }
+  flushinp(); /*limpa buffer de input*/
+  
+  clear();
+}
+
+void GameOver(t_lista *l, t_win *win)
+{
+  	WINDOW *temp, *temp2;
+	
+	wclear(stdscr);
+	temp = newwin(ROW/2-5,COL-15,(win->gety-ROW)/2+5,(win->getx-COL)/2+15);
+	init_pair(30, COLOR_RED, COLOR_BLACK);
+	wattron(temp, COLOR_PAIR(30) | A_BOLD );
+	temp2 = newwin(ROW-1,COL,(win->gety-ROW)/2+1,(win->getx-COL)/2);
+		
+	wmove(temp,win->gety/2-15,win->getx/2);
+	wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s",GO1,GO2,GO3,GO4,GO5,GO6,GO7);
+	wmove(temp2,win->gety/2,win->getx/2-38);
+	wprintw(temp2,"SCORE: %d", l->score);
+	wrefresh(temp2);
+	wrefresh(temp);
+		
+	sleep(5);
+	endwin();
+	exit(1);	
+}
 
 /* CRIA SENTINELAS NA LISTA PARA FACILITAR O ACESSO E MANIPULAÇÃO
  * COLOCA O TANQUE NO INICIO DA LISTA E NAVE MAE NO FIM */
@@ -713,33 +777,6 @@ void removeAtualLista(t_node *atual)
 	atual = NULL;
 }
 
-int GameOver(t_lista *l, t_win *win)
-{
-	int key;
-	
-	clear();
-	mvprintw(win->gety/2-10, win->getx/2-35, GO1);
-	mvprintw(win->gety/2-9, win->getx/2-35, GO2);
-	mvprintw(win->gety/2-8, win->getx/2-35, GO3);
-	mvprintw(win->gety/2-7, win->getx/2-35, GO4);
-	mvprintw(win->gety/2-6, win->getx/2-35, GO5);
-	mvprintw(win->gety/2-5, win->getx/2-35, GO6);
-	mvprintw(win->gety/2-4, win->getx/2-35, GO7);
-
-	mvprintw(win->gety/2+1, win->getx/2-7, " SCORE: %d", l->score);
-	mvprintw(win->gety-11, win->getx/2-10, "PUSH 'r' TO RESTART");
-	mvprintw(win->gety-10, win->getx/2-10, " PUSH 'q' TO QUIT");
-	while ( (key = getch()) != 'q' ){ /*quita o jogo*/
-		refresh();
-		if (key == 'r') /*reinicia o jogo*/
-			return main();
-		flushinp();
-		usleep(60000);
-	}
-	endwin();
-	exit(1);
-}
-
 /*FUNÇÃO RESPONSÁVEL POR MOVIMENTAR O TIRO DO USUÁRIO
  * E DOS INIMIGOS, A PARTIR DE UMA LISTA LINKADA
  * E CHECAR AS CONDIÇÕES DE COLISÃO ENTRE TIRO E OUTROS ELEMENTOS */
@@ -861,7 +898,6 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 {
 	int i, j;
 
-	limpaNodoMatriz(mat, l->tanque);
 	switch (key)
 	{
 		case ' ': /* BOTÃO DE TIRO */
@@ -871,6 +907,7 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 		case KEY_LEFT: /* BOTÃO DE ANDAR PARA ESQUERDA */
 			if ( l->tanque->posx - 1 > 2 )
 			{
+				limpaNodoMatriz(mat, l->tanque);
 				for (i=-1; i<=1; i++)
 					for (j=-2; j<=3; j++){
 					wmove(win, l->tanque->posy+i, l->tanque->posx+j);
@@ -882,6 +919,7 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 		case KEY_RIGHT: /* BOTÃO DE ANDAR PARA DIREITA */
 			if ( l->tanque->posx + 1 < COL-3 )
 			{
+				limpaNodoMatriz(mat, l->tanque);
 				for (i=-1; i<=1; i++)
 					for (j=-2; j<=3; j++){
 					wmove(win, l->tanque->posy+i, l->tanque->posx+j);
@@ -965,13 +1003,13 @@ int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[R
 	
 	if ( l->updateField % 60000 == 0 )
 	{	
-		/*para ajudar a debugar*/
+		/*para ajudar a debugar
 		mvprintw(0,0,"NAVES: %d ",l->tamanho);
 		mvprintw(1,0,"TIROS USER: %d     ",t->qtd_tiros1);
 		mvprintw(2,0,"TIROS: %d     ",t->tamanho);
 		mvprintw(3,0,"BARREIRA: %d",w->tamanho);
 		refresh();
-		/**/
+		*/
 		printBarreiras(win->enemy, mat);
 		printNaves(l, win);
 		printTanque(l, win->tank);
@@ -1047,47 +1085,6 @@ int GameOn(int *level, t_lista *l, t_tiro *t, t_wall *w, t_win *win, void *mat[R
 	return 1;
 }
 
-void titleScreen(t_win *win)
-{
-  int key;
-  WINDOW *temp, *temp2;
-  
-  while ( win->getx<COL || win->gety<ROW )
-  {
-  	clear();
-  	getmaxyx(stdscr, win->gety, win->getx);
-        mvprintw(win->gety/2,win->getx/2-12,"TERMINAL SIZE: %dx%d", win->getx, win->gety);
-        mvprintw((win->gety/2)+1, win->getx/2-12, "MINIMUM SIZE REQUIRED: 100x38");
-	usleep(60000);
-        flushinp(); /*limpa buffer de input*/
-	refresh();
-  }
-  
-  temp = newwin(ROW/2+1,COL-5,(win->gety-ROW)/2+5,(win->getx-COL)/2+4);
-  init_pair(30, COLOR_GREEN, COLOR_BLACK);
-  wattron(temp, COLOR_PAIR(30) | A_BOLD );
-  temp2 = newwin(ROW,COL,(win->gety-ROW)/2,(win->getx-COL)/2);
-  clear(); 
-  while (key != 'a')
-  {
-	wclear(temp);
-	wclear(temp2);
-	wmove(temp,win->gety/2-15,win->getx/2);
-        wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,T15);
-	wmove(temp2,win->gety-10,win->getx/2-43);
-        wprintw(temp2,"PUSH 'a' TO BEGIN\n\n\n\n\n\n\n github.com/LucasMull");
-	box(temp2, '*', '*');
-	wrefresh(temp2);
-	wrefresh(temp);
-	
-	key = getch();
-	usleep(60000);
-  }
-  flushinp(); /*limpa buffer de input*/
-  
-  clear();
-}
-
 int main()
 {
 /* GAME properties */
@@ -1130,12 +1127,12 @@ int main()
   l.speed = 500000;
 
   /*INICIALIZA JANELAS A SEREM UTILIZADAS*/
-  win.moship = newwin(5,COL,size_y,size_x);
-  win.enemy = newwin(ROW-3,COL,size_y,size_x);
-  win.tank = newwin(ROW,COL,size_y,size_x);
-  win.fire1 = newwin(ROW,COL,size_y,size_x);
-  win.fire2 = newwin(ROW,COL,size_y,size_x);
-  win.score = newwin(ROW,COL,size_y,size_x);
+  win.moship = newwin(5,COL,size_y+1,size_x);
+  win.enemy = newwin(ROW-3,COL,size_y+1,size_x);
+  win.tank = newwin(ROW-1,COL,size_y+1,size_x);
+  win.fire1 = newwin(ROW-1,COL,size_y+1,size_x);
+  win.fire2 = newwin(ROW-1,COL,size_y+1,size_x);
+  win.score = newwin(ROW-1,COL,size_y+1,size_x);
   
   
   /*INICIALIZA PARES DE COR E ATRIBUTOS PARA CADA JANELA*/
