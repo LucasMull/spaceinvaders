@@ -652,10 +652,8 @@ void limpaNodoMatriz(void *mat[ROW][COL], t_node *atual)
 	}		
 	 
 	for ( i=-1;i<=fim_i;i++ )
-		for ( j=ini_j;j<=fim_j;j++ ){
-			/*mvaddch(atual->posy+i,atual->posx+j+COL/2-16, '@');*/
+		for ( j=ini_j;j<=fim_j;j++ )
 			mat[atual->posy+i][atual->posx+j] = NULL;
-		}
 }
 
 void atualizaMatriz(void *mat[ROW][COL], t_node *atual)
@@ -676,10 +674,8 @@ void atualizaMatriz(void *mat[ROW][COL], t_node *atual)
                 	row++;
                         col=ini_col;
                 }
-		else if ( atual->sprite1[j] != ' ' ){
-			/*mvaddch(atual->posy+row,atual->posx+col+COL/2-16, '@');*/
+		else if ( atual->sprite1[j] != ' ' )
 			mat[atual->posy+row][atual->posx+col] = atual;
-		}
 		
 		col++;
                 j++;
@@ -928,7 +924,7 @@ void movimentaTanque(t_lista *l, t_tiro *t, WINDOW *win, int key, void *mat[ROW]
 	switch (key)
 	{
 		case ' ': /* BOTÃO DE TIRO */
-			/*if (t->qtd_tiros1 < 3)*/
+			if (t->qtd_tiros1 < 3)
 				inicializaTiros(l, t, 1);
 			break;
 		case KEY_LEFT: /* BOTÃO DE ANDAR PARA ESQUERDA */
