@@ -121,30 +121,30 @@ void titleScreen(t_win *win)
 		refresh();
 	  }
 	  
-	  temp = newwin(ROW/2+1,COL-5,(win->gety-ROW)/2+5,(win->getx-COL)/2+4);
+   	  temp = newwin((ROW-1)/2,COL-5,(win->gety-ROW)/2+5,(win->getx-COL)/2+4);
+   	  temp2 = newwin((ROW-1)/2,COL-5,ROW/2+12,(win->getx-COL)/2);
 	  init_pair(30, COLOR_GREEN, COLOR_BLACK);
 	  wattron(temp, COLOR_PAIR(30) | A_BOLD );
-	  temp2 = newwin(ROW,COL,(win->gety-ROW)/2,(win->getx-COL)/2);
 	  clear(); 
+	  
+	  wmove(temp,win->gety/2,win->getx/2);
+	  wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,T15);
+	  wmove(temp2,5,COL/2-13);
+	  wprintw(temp2,"PUSH 'a' TO START GAME");
+	  mvwprintw(temp2,17,0,"github.com/LucasMull");
 	  while ( (key=getch()) != 'a')
 	  {
-		wclear(temp);
-		wclear(temp2);
-		wmove(temp,win->gety/2-15,win->getx/2);
-		wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,T15);
-		wmove(temp2,win->gety-10,win->getx/2-43);
-		wprintw(temp2,"PUSH 'a' TO BEGIN\n\n\n\n\n\n\n github.com/LucasMull");
 		if ( key == 'x' && win->DEBUG_MODE == FALSE)
 			win->DEBUG_MODE = TRUE;
-		else if (key == 'x')
+		else if (key == 'x'){
 			win->DEBUG_MODE = FALSE;
-		else if (win->DEBUG_MODE == TRUE){
-			wmove(temp2,ROW,COL);
-			wprintw(temp2,"                     DEBUG MODE ON");
+			mvwprintw(temp,17,COL/2-30,"                                  ");
 		}
-		box(temp2, '*', '*');
-		wrefresh(temp2);
+		else if (win->DEBUG_MODE == TRUE){
+			mvwprintw(temp,17,COL/2-30,"                     DEBUG MODE ON");
+		}
 		wrefresh(temp);
+		wrefresh(temp2);
 		
 		usleep(60000);
 	  }
@@ -158,30 +158,31 @@ void GameOver(t_lista *l, t_win *win)
   	WINDOW *temp, *temp2;
 	int key;
 
-	wclear(stdscr);
-	temp = newwin(ROW/2-5,COL-15,(win->gety-ROW)/2+5,(win->getx-COL)/2+14);
+	clear(); 
+   	temp = newwin((ROW-1)/2,COL-5,(win->gety-ROW)/2+10,(win->getx-COL)/2+4);
 	init_pair(30, COLOR_RED, COLOR_BLACK);
 	wattron(temp, COLOR_PAIR(30) | A_BOLD );
-	temp2 = newwin(ROW,COL,(win->gety-ROW)/2,(win->getx-COL)/2);
+   	temp2 = newwin((ROW-1)/2,COL-5,ROW/2+12,(win->getx-COL)/2);
 	
+	init_pair(30, COLOR_RED, COLOR_BLACK);
+	wattron(temp, COLOR_PAIR(30) | A_BOLD );
+	  
+	wmove(temp,win->gety/2+15,win->getx/2);
+	wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s",GO1,GO2,GO3,GO4,GO5,GO6,GO7);
 	
+	mvwprintw(temp2,2,COL/2-15,"SCORE: %d", l->score);
+	mvwprintw(temp2,5,COL/2-24,"PUSH 'r' TO START NEW GAME" );
+	mvwprintw(temp2,6,COL/2-19,"PUSH 'q' TO QUIT" );
 	while ( (key=getch())!='q' )
 	{	
-		wmove(temp,win->gety/2-15,win->getx/2);
-		wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s",GO1,GO2,GO3,GO4,GO5,GO6,GO7);
-		wmove(temp2,win->gety/2,win->getx/2-37);
-		wprintw(temp2,"SCORE: %d", l->score);
-		mvwprintw(temp2,ROW-10,win->getx/2-46,"PUSH 'r' TO START NEW GAME" );
-		mvwprintw(temp2,ROW-9,win->getx/2-41,"PUSH 'q' TO QUIT" );
 		if (key == 'r') /*termina processo atual e reinicia um novo no lugar, a partir de um código bash*/
 		{	
 			endwin();
 			system("./.newgame");
 			exit(1);
 		}
-		box(temp2, '*', '*');
-		wrefresh(temp2);
 		wrefresh(temp);
+		wrefresh(temp2);
 
 		usleep(60000);
 	}	
@@ -1229,7 +1230,6 @@ int main()
   srand(time(NULL)); /*cria seed para rand()*/
   size_y = (win.gety-ROW)/2;
   size_x = (win.getx-COL)/2;
-  
   for ( i=0; i<ROW; i++ )
       for ( j=0; j<COL; j++ )
           mat[i][j] = NULL; /*preenche elementos da matriz de ponteiros com NULL*/
