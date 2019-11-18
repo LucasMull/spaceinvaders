@@ -167,10 +167,8 @@ void GameOver(t_lista *l, t_win *win)
 	init_pair(30, COLOR_RED, COLOR_BLACK);
 	wattron(temp, COLOR_PAIR(30) | A_BOLD );
 	  
-	wmove(temp,win->gety/2+15,win->getx/2);
-	wprintw(temp,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s",GO1,GO2,GO3,GO4,GO5,GO6,GO7);
-	
-	mvwprintw(temp2,2,COL/2-15,"SCORE: %d", l->score);
+	mvwprintw(temp,0,0,"\n%s\n%s\n%s\n%s\n%s\n%s\n%s",GO1,GO2,GO3,GO4,GO5,GO6,GO7);
+	mvwprintw(temp,10,COL/2-18,"SCORE: %d", l->score);
 	mvwprintw(temp2,5,COL/2-24,"PUSH 'r' TO START NEW GAME" );
 	mvwprintw(temp2,6,COL/2-19,"PUSH 'q' TO QUIT" );
 	while ( (key=getch())!='q' )
