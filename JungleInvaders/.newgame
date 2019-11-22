@@ -1,8 +1,8 @@
 #!/bin/bash
 
-PID=$(pidof ./JungleInvaders)
+PID=$(pidof ./jungleinvaders)
 
 clear
 kill -SIGINT $PID
 pkill -HUP inetd
-./JungleInvaders
+./jungleinvaders
